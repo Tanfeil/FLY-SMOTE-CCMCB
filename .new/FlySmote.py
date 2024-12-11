@@ -3,7 +3,9 @@
 Created on Mon Sep 12 09:52:47 2022
 
 @author: Raneen_new
-Rewritten and refactored by Tanfeil on 11/12/2024.
+Refactored by: Tanfeil on 11/12/2024.
+
+This Module to implements FLY-SMOTE for oversampling the minority class.
 """
 import random
 import warnings
