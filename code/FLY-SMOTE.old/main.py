@@ -10,7 +10,7 @@ from ReadData import ReadData
 from FlySmote import FlySmote
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras import backend as K
+from tensorflow.keras import backend as k
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 import math
@@ -30,16 +30,16 @@ def check_imbalance(y_data):
     cont=np.bincount(y_data)
     num_zeros = cont[0]
     num_ones = cont[1]
-    threshould = 0
+    threshold = 0
     if(num_zeros < num_ones):
         minority_lable = 0
-        threshould = num_zeros/num_ones
+        threshold = num_zeros/num_ones
     else:
-        minority_lable = 1 
-        threshould = num_ones/num_zeros
+        minority_lable = 1
+        threshold = num_ones/num_zeros
     #print(num_zeros)
     #print(num_ones)
-    return minority_lable, threshould
+    return minority_lable, threshold
 
 def run(argv):
     data_name = ''
@@ -179,7 +179,7 @@ def run(argv):
             scaled_local_weight_list.append(scaled_weights)
             
             #clear session to free memory after each communication round
-            K.clear_session()
+            k.clear_session()
             
         #to get the average over all the local model, we simply take the sum of the scaled weights
         average_weights = fly_smote.sum_scaled_weights(scaled_local_weight_list)
