@@ -1,0 +1,17 @@
+[
+    {
+        "name": "adult",
+        "url": "https://archive.ics.uci.edu/static/public/2/adult.zip",
+        "target_name": "adult.zip"
+    },
+    {
+        "name": "compass",
+        "url": "https://www.kaggle.com/api/v1/datasets/download/danofer/compass",
+        "target_name": "compass.zip"
+    },
+    {
+        "name": "bank_marketing",
+        "url": "https://archive.ics.uci.edu/static/public/222/bank+marketing.zip",
+        "target_name": "bank.zip"
+    }
+]
