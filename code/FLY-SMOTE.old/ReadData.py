@@ -60,7 +60,7 @@ class ReadData:
         data = df.to_dict('list')
         for k in data.keys():
             data[k] = np.array(data[k])
-    
+
         """ Feature normalization and one hot encoding """
     
         # convert class label 0 to -1
@@ -104,7 +104,6 @@ class ReadData:
         # convert the sensitive feature to 1-d array
         x_control = dict(x_control)
         for k in x_control.keys():
-            print(x_control[k])
             #assert (x_control[k].shape[1] == 1)  # make sure that the sensitive feature is binary after one hot encoding
             x_control[k] = np.array(x_control[k]).flatten()
     
@@ -116,7 +115,7 @@ class ReadData:
             else:
                 Y.append(1)
         Y = np.array(Y)
-        x_train, x_test, y_train, y_test = train_test_split(X,Y,test_size=0.2)
+        x_train, x_test, y_train, y_test = train_test_split(X,Y,test_size=0.2, random_state=42)
         Xtr = x_train
         Xte = x_test
         Ytr = y_train

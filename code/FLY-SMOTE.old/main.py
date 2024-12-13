@@ -45,7 +45,7 @@ def check_imbalance(y_data):
 def run(argv):
     data_name = ''
     dir_name = ''
-    k_value = 4 #bank = 5, compass=5, Adult = 5
+    k_value = 3 #bank = 5, compass=5, Adult = 5
     r_value = 0.4 #bank=0.2,0.3 , compass =0.3, Adult = 0.2
     thre = 0.30
     num_clients = 3
@@ -150,7 +150,9 @@ def run(argv):
                     xte.append(X_test[i].numpy())
                     yte.append(Y_test[i].numpy())
                     i +=1
+
             minority_lable,threshould = check_imbalance(yte)
+
             #print(threshould)
             if(threshould<=thre):
                 # print("imbalance")
@@ -179,9 +181,14 @@ def run(argv):
             global_count = global_count + (added_points)
             # get the total number of data points held by a client
             local_count = len(Xtr_new)
+
             scaling_factor = local_count/global_count
+
+            # TODO: just for comparability
+            scaling_factor = 1/3
                     
             scaled_weights = fly_smote.scale_model_weights(local_model.get_weights(), scaling_factor)
+
             scaled_local_weight_list.append(scaled_weights)
             
             #clear session to free memory after each communication round
@@ -192,7 +199,7 @@ def run(argv):
         
         #update global model 
         global_model.set_weights(average_weights)
-    
+
         #test global model and print out metrics after each communications round
         for(X_test, Y_test) in test_batched:
             global_acc, global_loss,conf = fly_smote.test_model(X_test, Y_test, global_model, comm_round)
@@ -200,12 +207,12 @@ def run(argv):
             FP = conf[0][1]
             FN = conf[1][0]
             TP = conf[1][1]
-            sensitivity = TP/(TP+FN) 
+            sensitivity = TP/(TP+FN)
             specificity = TN/(FP+TN)
             BalanceACC = (sensitivity+specificity)/2
             G_mean = math.sqrt(sensitivity*specificity)
-            FN_rate= FN/(FN+TP) 
-            FP_rate = FP/(FP+TN) 
+            FN_rate= FN/(FN+TP)
+            FP_rate = FP/(FP+TN)
             mcc = ((TP*TN)-(FP*FN))/(math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)))
             #add the data to arrays
             sensitivity_.append(sensitivity)
@@ -217,7 +224,7 @@ def run(argv):
             accuracy_.append(global_acc)
             loss_.append(global_loss)
             mcc_.append(mcc)
-            
+
         end_time.append(((time.time()) - start))
 
     print('Accuracy: {l}'.format(l=accuracy_[comms_round-1]))
