@@ -1,16 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 12 09:08:59 2022
-@author: Raneen_new
-Refactored by: Tanfeil on 11/12/2024
-
-Script to train and evaluate a federated learning model with synthetic data generation using FlySmote.
-
-This script reads imbalanced datasets, performs federated learning with client-specific training,
-and evaluates global model performance over multiple communication rounds.
-"""
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import argparse
 import time
 import math
@@ -19,6 +7,8 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow.keras.backend as k
 import random
+import wandb
+
 from keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import EarlyStopping
@@ -28,33 +18,11 @@ from FlySmote import FlySmote
 from NNModel import SimpleMLP
 from tqdm import tqdm
 
-#tf.config.run_functions_eagerly(True)
-
 def read_data(file_name, directory):
-    """
-    Read and load training and testing data from the specified directory.
-
-    Args:
-        file_name (str): Name of the data file.
-        directory (str): Path to the directory containing the data.
-
-    Returns:
-        tuple: Training and testing features (X_train, X_test) and labels (Y_train, Y_test).
-    """
     data_loader = ReadData(file_name)
     return data_loader.load_data(directory)
 
-
 def check_imbalance(y_data):
-    """
-    Check for imbalance in the provided dataset.
-
-    Args:
-        y_data (array-like): Labels of the dataset.
-
-    Returns:
-        tuple: Minority label and imbalance threshold.
-    """
     counts = np.bincount(y_data)
     num_zeros, num_ones = counts[0], counts[1]
 
@@ -67,11 +35,7 @@ def check_imbalance(y_data):
 
     return minority_label, threshold
 
-
 def run():
-    """
-    Main function to execute the training and evaluation process.
-    """
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
     parser.add_argument("-f", "--file_name", type=str, help="Name of the input file.")
@@ -86,12 +50,15 @@ def run():
     parser.add_argument("-b", "--batch_size", type=int, default=4, help="Batch size for training.")
     parser.add_argument("-m", "--metrics", nargs='+', default=["accuracy"], help="List of metrics to evaluate the model.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
+    parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
+    parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
+    parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
 
     args = parser.parse_args()
 
     if args.seed is not None:
         random.seed(args.seed)
-        np.random.seed(args.seed) #controls also scikit-learn
+        np.random.seed(args.seed)
         tf.random.set_seed(args.seed)
         print(f"Random seed set to: {args.seed}")
 
@@ -106,20 +73,24 @@ def run():
     comms_rounds = args.comms_rounds
     loss_function = args.loss_function
     batch_size = args.batch_size
-    metrics = args.metrics
+    attribute_index = args.attribute_index
+    metrics = args.metrics  # Default metrics
+
+    # W&B logging setup (only if enabled)
+    if args.wandb_logging:
+        wandb.init(project="FLY-SMOTE-CCMCB", name=args.wandb_name, config=vars(args))
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(data_name, dir_name)
 
     # Check for imbalance
-    # TODO: needed?
     minority_label, imbalance_threshold = check_imbalance(Y_train)
 
     # Initialize FlySmote
     fly_smote = FlySmote(X_train, Y_train, X_test, Y_test)
 
     # Create clients and batch their data
-    clients = fly_smote.create_clients(X_train, Y_train, num_clients, initial='client', attribute_index=0)
+    clients = fly_smote.create_clients(X_train, Y_train, num_clients, initial='client', attribute_index=attribute_index)
     clients_batched = {name: fly_smote.batch_data(data) for name, data in clients.items()}
 
     # Batch test set
@@ -127,10 +98,10 @@ def run():
 
     # Create an ExponentialDecay learning rate scheduler
     lr_schedule = ExponentialDecay(
-        initial_learning_rate=learning_rate,  # Initial learning rate
-        decay_steps=comms_rounds,  # Number of steps after which the learning rate will be reduced
-        decay_rate=0.9,  # Factor by which the learning rate is reduced
-        staircase=False  # If True, the learning rate will decrease in discrete steps, not continuously
+        initial_learning_rate=learning_rate,
+        decay_steps=comms_rounds,
+        decay_rate=0.9,
+        staircase=False
     )
 
     early_stopping = EarlyStopping(patience=5, restore_best_weights=True)
@@ -165,8 +136,6 @@ def run():
         for client_name, client_data in tqdm(clients_batched.items(), desc=f"Round {round_num + 1} Clients", leave=False):
             # Initialize and compile local model
             local_model = SimpleMLP.build(X_train, n=1)
-
-            # New optimizer after aggregating. optimizer keeps track of weights
             optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
             local_model.compile(loss=loss_function, optimizer=optimizer, metrics=metrics)
 
@@ -179,12 +148,11 @@ def run():
                 x_client.extend(X_batch.numpy())
                 y_client.extend(Y_batch.numpy())
 
-            # Check for imbalance and apply FlySmote if needed
+            # Apply FlySmote if needed
             minority_label, imbalance_threshold = check_imbalance(y_client)
 
             if imbalance_threshold <= threshold:
                 X_syn, Y_syn = fly_smote.create_synth_data(x_client, y_client, minority_label, k_value, r_value)
-
                 X_syn, X_val, Y_syn, Y_val = train_test_split(X_syn, Y_syn, test_size=0.1, shuffle=True)
                 local_data = fly_smote.batch_data(list(zip(X_syn, Y_syn)), batch_size=batch_size)
                 local_model.fit(local_data, validation_data=(X_val, Y_val), callbacks=[early_stopping], epochs=1, verbose=0)
@@ -194,11 +162,7 @@ def run():
             # Scale local weights and append to list
             local_count = len(x_client)
             global_count = sum([(len(client) * batch_size) for client in clients_batched.values()])
-
-            # TODO: in original version scaling factor ist quite different. And quite lost and wrong?
-            #  local counts there does not sum up to global count?
             scaling_factor = local_count / global_count
-
             scaled_weights = fly_smote.scale_model_weights(local_model.get_weights(), scaling_factor)
             scaled_local_weights.append(scaled_weights)
 
@@ -221,8 +185,7 @@ def run():
             g_mean = math.sqrt(sensitivity * specificity)
             fp_rate = FP / (FP + TN)
             fn_rate = FN / (FN + TP)
-            # added 0.1*1e-10 due to 0 Positiv predictions to prevent division by 0
-            mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1*1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+            mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1 * 1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
 
             # Update metrics history
             metrics_history['sensitivity'].append(sensitivity)
@@ -234,6 +197,17 @@ def run():
             metrics_history['accuracy'].append(global_accuracy)
             metrics_history['loss'].append(global_loss)
             metrics_history['mcc'].append(mcc)
+
+            # Log metrics to W&B if enabled
+            if args.wandb_logging:
+                wandb.log({
+                    'global accuracy': global_accuracy,
+                    'global loss': global_loss,
+                    'sensitivity': sensitivity,
+                    'specificity': specificity,
+                    'balanced_accuracy': balanced_accuracy,
+                    'g_mean': g_mean
+                })
 
     elapsed_time = time.time() - start_time
     print(f"Training completed in {elapsed_time:.2f} seconds")
