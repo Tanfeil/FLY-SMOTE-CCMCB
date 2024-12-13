@@ -36,31 +36,47 @@ class FlySmote:
         self.Y_test = Y_test
 
     @staticmethod
-    def create_clients(image_list, label_list, num_clients, initial='client'):
+    def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None):
         """
-        Creates a dictionary of clients with data shards.
+        Creates a dictionary of clients with data shards. Optionally distributes data based on a specified attribute index.
 
         Args:
-            image_list: A list of numpy arrays representing training images.
-            label_list: A list of binarized labels corresponding to each image.
+            data_list: A list of numpy arrays representing training data.
+            label_list: A list of binarized labels corresponding to each data point.
             num_clients: The number of clients (workers) to split the data into.
             initial: The prefix for the client names (e.g., 'client_1').
+            attribute_index: The column index in the data to use for distribution (optional).
 
         Returns:
-            A dictionary where keys are client names and values are data shards (image, label tuples).
+            A dictionary where keys are client names and values are data shards (data, label tuples).
         """
         client_names = ['{}_{}'.format(initial, i + 1) for i in range(num_clients)]
 
-        # Randomize the data
-        data = list(zip(image_list, label_list))
-        random.shuffle(data)
+        if attribute_index is not None:
+            # Map each unique attribute value to its respective data points
+            attribute_data_map = {}
+            for data, label in zip(data_list, label_list):
+                attribute_value = data[attribute_index]  # Get the attribute value using the index
+                if attribute_value not in attribute_data_map:
+                    attribute_data_map[attribute_value] = []
+                attribute_data_map[attribute_value].append((data, label))
 
-        # Shard the data and assign to clients
-        size = len(data) // num_clients
-        shards = [data[i:i + size] for i in range(0, size * num_clients, size)]
+            # Sort attributes and distribute them among clients
+            sorted_attributes = sorted(attribute_data_map.keys())
+            shards = [[] for _ in range(num_clients)]
+            for idx, attribute in enumerate(sorted_attributes):
+                shards[idx % num_clients].extend(attribute_data_map[attribute])
+        else:
+            # Randomize the data if no attribute_index is provided
+            data = list(zip(data_list, label_list))
+            random.shuffle(data)
+
+            # Shard the data and assign to clients
+            size = len(data) // num_clients
+            shards = [data[i:i + size] for i in range(0, size * num_clients, size)]
 
         # Ensure the number of shards equals the number of clients
-        assert (len(shards) == len(client_names))
+        assert len(shards) == len(client_names), "Mismatch between number of shards and clients."
 
         return {client_names[i]: shards[i] for i in range(len(client_names))}
 
@@ -78,7 +94,7 @@ class FlySmote:
         """
         data, labels = zip(*data_shard)  # Unzip the data and labels
         dataset = tf.data.Dataset.from_tensor_slices((list(data), list(labels)))  # Create a dataset
-        return dataset.shuffle(len(labels)).batch(batch_size)  # Shuffle and batch the dataset
+        return dataset.shuffle(len(labels)).batch(batch_size, drop_remainder=True)  # Shuffle and batch the dataset
 
     @staticmethod
     def weight_scaling_factor(clients_train_data, client_name):
@@ -190,8 +206,8 @@ class FlySmote:
         votes = [i[1] for i in sorted(distances)[:k]]
         return votes
 
-    @staticmethod
-    def kSMOTE(d_major, d_minor, k, r):
+
+    def kSMOTE(self, d_major, d_minor, k, r):
         """
         Generates synthetic data using the k-SMOTE algorithm.
 
