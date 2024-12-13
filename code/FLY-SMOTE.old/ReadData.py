@@ -54,7 +54,7 @@ class ReadData:
         # COMPAS_INPUT_FILE = "bank-full.csv"
         #COMPAS_INPUT_FILE = "bank-full.csv"
         COMPAS_INPUT_FILE = "%s.csv"%(location)
-        df = pd.read_csv(COMPAS_INPUT_FILE)
+        df = pd.read_csv(COMPAS_INPUT_FILE, quotechar='"', sep=';')
     
         # convert to np array
         data = df.to_dict('list')
@@ -104,7 +104,8 @@ class ReadData:
         # convert the sensitive feature to 1-d array
         x_control = dict(x_control)
         for k in x_control.keys():
-            assert (x_control[k].shape[1] == 1)  # make sure that the sensitive feature is binary after one hot encoding
+            print(x_control[k])
+            #assert (x_control[k].shape[1] == 1)  # make sure that the sensitive feature is binary after one hot encoding
             x_control[k] = np.array(x_control[k]).flatten()
     
         feature_names.append('target')

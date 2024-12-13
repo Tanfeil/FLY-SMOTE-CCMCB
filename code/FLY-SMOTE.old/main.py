@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 
 #from imblearn.over_sampling import SMOTE
 import time
+tf.config.run_functions_eagerly(True)
 def read_data(name,location):
     data_load = ReadData(name)
     Xtr,Ytr,Xte,Yte = data_load.load_data(location)
@@ -90,7 +91,7 @@ def run(argv):
     comms_round = 50
     loss='binary_crossentropy'
     metrics = ['accuracy']
-    optimizer = SGD(lr=lr, 
+    optimizer = SGD(learning_rate=lr,
                     decay=lr / comms_round, 
                     momentum=0.9
                    ) 
@@ -125,6 +126,11 @@ def run(argv):
         
         #loop through each client and create new local model
         for client in client_names:
+            optimizer = SGD(learning_rate=lr,
+                            decay=lr / comms_round,
+                            momentum=0.9
+                            )
+
             smlp_local = SimpleMLP()
             local_model = smlp_local.build(Xtr, n)
             local_model.compile(loss=loss, 
