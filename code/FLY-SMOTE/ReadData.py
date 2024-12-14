@@ -138,7 +138,7 @@ class ReadData:
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.1, shuffle=True)
 
         encoder = ColumnTransformer([
-            ('onehot', OneHotEncoder(drop='first', sparse=False), X.select_dtypes('object').columns)
+            ('onehot', OneHotEncoder(drop='first', sparse_output=False), X.select_dtypes('object').columns)
         ], remainder='passthrough')
 
         pipeline = Pipeline([
@@ -149,12 +149,13 @@ class ReadData:
         x_train = pipeline.fit_transform(x_train)
         x_test = pipeline.transform(x_test)
 
-        ohe = OneHotEncoder(sparse=False)
+        ohe = OneHotEncoder(sparse_output=False)
         y_train = ohe.fit_transform(y_train.to_frame()).argmax(axis=1)
         y_test = ohe.transform(y_test.to_frame()).argmax(axis=1)
 
         return x_train, y_train, x_test, y_test
 
+    #TODO: Make working!
     @staticmethod
     def _load_compass(location):
         """
