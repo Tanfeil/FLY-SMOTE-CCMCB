@@ -38,8 +38,8 @@ def check_imbalance(y_data):
 def run():
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
-    parser.add_argument("-f", "--file_name", type=str, help="Name of the input file.")
-    parser.add_argument("-d", "--directory_name", type=str, help="Name of the directory containing the data.")
+    parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
+    parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
     parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
@@ -49,7 +49,7 @@ def run():
     parser.add_argument("-lf", "--loss_function", type=str, default="binary_crossentropy", help="Loss function to use.")
     parser.add_argument("-b", "--batch_size", type=int, default=4, help="Batch size for training.")
     parser.add_argument("-m", "--metrics", nargs='+', default=["accuracy"], help="List of metrics to evaluate the model.")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
     parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
@@ -63,8 +63,8 @@ def run():
         print(f"Random seed set to: {args.seed}")
 
     # Assign parameters
-    data_name = args.file_name
-    dir_name = args.directory_name
+    dataset_name = args.dataset_name
+    filepath = args.filepath
     k_value = args.k_value
     r_value = args.r_value
     threshold = args.threshold
@@ -81,7 +81,7 @@ def run():
         wandb.init(project="FLY-SMOTE-CCMCB", name=args.wandb_name, config=vars(args))
 
     # Load data
-    X_train, Y_train, X_test, Y_test = read_data(data_name, dir_name)
+    X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
 
     # Check for imbalance
     minority_label, imbalance_threshold = check_imbalance(Y_train)
@@ -213,12 +213,12 @@ def run():
     print(f"Training completed in {elapsed_time:.2f} seconds")
     print(f"Final Accuracy: {metrics_history['accuracy'][-1]:.4f}")
 
-    # Plot balanced accuracy
-    plt.plot(metrics_history['balanced_accuracy'])
-    plt.title('Balanced Accuracy Over Communication Rounds')
-    plt.xlabel('Round')
-    plt.ylabel('Balanced Accuracy')
-    plt.show()
+    # # Plot balanced accuracy
+    # plt.plot(metrics_history['balanced_accuracy'])
+    # plt.title('Balanced Accuracy Over Communication Rounds')
+    # plt.xlabel('Round')
+    # plt.ylabel('Balanced Accuracy')
+    # plt.show()
 
 
 if __name__ == '__main__':
