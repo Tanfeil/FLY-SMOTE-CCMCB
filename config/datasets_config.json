@@ -1,7 +1,7 @@
 [
     {
         "name": "adult",
-        "url": "https://archive.ics.uci.edu/static/public/2/adult.zip",
+        "url": "https://www.kaggle.com/api/v1/datasets/download/wenruliu/adult-income-dataset",
         "target_name": "adult.zip"
     },
     {
