@@ -1,0 +1,131 @@
+[
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.2,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.3,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.4,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.2,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.3,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.4,
+        "threshold": 0.3,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.2,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.3,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 3,
+        "r_value": 0.4,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.2,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.3,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    },
+    {
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank",
+        "k_value": 5,
+        "r_value": 0.4,
+        "threshold": 0.4,
+        "num_clients": 3,
+        "learning_rate": 0.01,
+        "comms_rounds": 80,
+        "wandb_logging": true
+    }
+]
