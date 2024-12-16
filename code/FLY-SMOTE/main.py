@@ -1,4 +1,3 @@
-import os
 import argparse
 import time
 import math
@@ -9,7 +8,7 @@ import tensorflow.keras.backend as k
 import random
 import wandb
 
-from keras.optimizers.schedules import ExponentialDecay
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
