@@ -88,7 +88,7 @@ class ReadData:
         sensitive_attrs = ["marital"]
 
         # Load dataset
-        df = pd.read_csv(f"{location}.csv")
+        df = pd.read_csv(f"{location}.csv", quotechar='"', sep=';')
 
         # Process target variable
         y = np.where(df[class_feature] == "yes", 1, 0)
@@ -99,22 +99,24 @@ class ReadData:
         feature_names = []
 
         for feature in features:
+            lb = LabelBinarizer()
+
             values = df[feature]
             if feature in continuous_features:
                 values = preprocessing.scale(values.astype(float))
+                values = np.reshape(values, (len(y), -1))
             else:
-                lb = LabelBinarizer()
                 values = lb.fit_transform(values)
 
             if feature in sensitive_attrs:
-                x_control[feature] = values.flatten()
+                x_control[feature] = values
 
             X = np.hstack((X, values))
             feature_names.extend(
-                [f"{feature}_{cat}" for cat in lb.classes_] if values.ndim > 1 else [feature]
+                [f"{feature}_{cat}" for cat in lb.classes_] if (values.ndim > 1 and feature not in continuous_features) else [feature]
             )
 
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         return x_train, y_train, x_test, y_test
 
     @staticmethod
@@ -133,10 +135,10 @@ class ReadData:
         X = df.drop(columns="income")
         y = df["income"]
 
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
+        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.1, shuffle=True)
 
         encoder = ColumnTransformer([
-            ('onehot', OneHotEncoder(drop='first', sparse=False), X.select_dtypes('object').columns)
+            ('onehot', OneHotEncoder(drop='first', sparse_output=False), X.select_dtypes('object').columns)
         ], remainder='passthrough')
 
         pipeline = Pipeline([
@@ -147,12 +149,13 @@ class ReadData:
         x_train = pipeline.fit_transform(x_train)
         x_test = pipeline.transform(x_test)
 
-        ohe = OneHotEncoder(sparse=False)
+        ohe = OneHotEncoder(sparse_output=False)
         y_train = ohe.fit_transform(y_train.to_frame()).argmax(axis=1)
         y_test = ohe.transform(y_test.to_frame()).argmax(axis=1)
 
         return x_train, y_train, x_test, y_test
 
+    #TODO: Make working!
     @staticmethod
     def _load_compass(location):
         """
@@ -172,5 +175,5 @@ class ReadData:
         X = df[features].values
         y = df[target].values
 
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y)
         return x_train, y_train, x_test, y_test
