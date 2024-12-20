@@ -3,6 +3,7 @@ import argparse
 import math
 import random
 import time
+from multiprocessing import Pool
 
 import numpy as np
 import tensorflow as tf
@@ -52,8 +53,6 @@ def train_client(client_args):
     for x, y in client_data:
         x_client.append(x)
         y_client.append(y)
-    x_client = np.array(x_client)
-    y_client = np.array(y_client)
 
     # Apply FlySmote if needed
     minority_label, imbalance_threshold = check_imbalance(y_client)
@@ -217,13 +216,14 @@ def run():
         global_gan_count = {label: 0 for label in classes}
         scaled_local_gan_weights = {label: [] for label in classes}
 
-        # Parallelisiertes Training für Clients
-        client_args_list = [
-            (client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes)
-            for client_name, client_data in clients.items()
-        ]
+        with Pool(processes=num_clients) as pool:
+            # Parallelisiertes Training für Clients
+            client_args_list = [
+                (client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes)
+                for client_name, client_data in clients.items()
+            ]
 
-        results = map(train_gan_client, client_args_list)  # Alternative: Pool.map für echte Parallelisierung
+            results = pool.map(train_gan_client, client_args_list)  # Alternative: Pool.map für echte Parallelisierung
 
         # Ergebnisse sammeln
         for scaled_weights, gan_count in results:
@@ -255,12 +255,13 @@ def run():
         # TODO: does it make sense like this ?
         global_count = sum([len(client) * batch_size for client in clients.values()])
 
-        client_args_list = [(
-            client_name, client_data, global_weights, X_train, batch_size, early_stopping,
-            fly_smote, threshold, k_value, r_value, local_epochs,
-            loss_function, lr_schedule, metrics, global_count, g_value, global_gan
-        ) for client_name, client_data in clients.items()]
-        scaled_local_weights = map(train_client, client_args_list)
+        with Pool(processes=num_clients) as pool:
+            client_args_list = [(
+                client_name, client_data, global_weights, X_train, batch_size, early_stopping,
+                fly_smote, threshold, k_value, r_value, local_epochs,
+                loss_function, lr_schedule, metrics, global_count, g_value, global_gan
+            ) for client_name, client_data in clients.items()]
+            scaled_local_weights = pool.map(train_client, client_args_list)
 
         # Aggregate scaled weights and update global model
         average_weights = fly_smote.sum_scaled_weights(scaled_local_weights)
