@@ -12,12 +12,13 @@
     {
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
-        "k_value": [3, 5, 40],
+        "k_value": 40,
         "r_value": {"range": [0.1, 0.6, 0.1]},
         "threshold": 0.33,
         "num_clients": [3, 5],
         "learning_rate": 0.01,
         "comms_rounds": 50,
-        "wandb_logging": true
+        "wandb_logging": true,
+        "g_value": {"range": [0.6, 3, 0.3]}
     }
 ]
