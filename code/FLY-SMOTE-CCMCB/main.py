@@ -6,14 +6,18 @@ import time
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as k
+import keras.backend as k
 import wandb
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.optimizers.schedules import ExponentialDecay
+from keras.callbacks import EarlyStopping
+from keras.optimizers import SGD
+from keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../FLY-SMOTE"))
 from FlySmote import FlySmote
 from GAN import MultiClassGAN
 from NNModel import SimpleMLP
@@ -52,12 +56,11 @@ def train_client(client_args):
     for x, y in client_data:
         x_client.append(x)
         y_client.append(y)
-    x_client = np.array(x_client)
-    y_client = np.array(y_client)
+
+    local_count = len(y_client)
 
     # Apply FlySmote if needed
     minority_label, imbalance_threshold = check_imbalance(y_client)
-
 
     if imbalance_threshold <= threshold:
         # Create Synth data
@@ -69,16 +72,18 @@ def train_client(client_args):
         y_client.extend(np.full(len(gan_samples), minority_label))
         x_client, y_client = fly_smote.create_synth_data(x_client, y_client, minority_label, k_value, r_value)
 
+    x_client = np.array(x_client)
+    y_client = np.array(y_client)
+
     X_train, X_val, Y_train, Y_val = train_test_split(x_client, y_client, test_size=0.1, shuffle=True)
-    local_data = fly_smote.batch_data(list(zip(X_train, Y_train)), batch_size=batch_size)
+    local_data = fly_smote.batch_data(X_train, Y_train, batch_size=batch_size)
     local_model.fit(local_data, validation_data=(X_val, Y_val), callbacks=[early_stopping], epochs=local_epochs,
                     verbose=0)
 
     # Scale local weights
-    local_count = len(x_client)
     scaling_factor = local_count / global_count
     scaled_weights = fly_smote.scale_model_weights(local_model.get_weights(), scaling_factor)
-
+    print(client_name)
     k.clear_session()
     return scaled_weights
 
@@ -163,13 +168,10 @@ def run():
 
     # W&B logging setup (only if enabled)
     if args.wandb_logging:
-        wandb.init(project="FLY-SMOTE-CCMCB-GAN", name=args.wandb_name, config=vars(args))
+        wandb.init(project="FLY-SMOTE-CCMCB", name=args.wandb_name, config=vars(args))
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
-
-    # Check for imbalance
-    minority_label, imbalance_threshold = check_imbalance(Y_train)
 
     # Initialize FlySmote
     fly_smote = FlySmote(X_train, Y_train, X_test, Y_test)
@@ -225,13 +227,13 @@ def run():
 
         results = map(train_gan_client, client_args_list)  # Alternative: Pool.map für echte Parallelisierung
 
-        # Ergebnisse sammeln
+        # accumulate results
         for scaled_weights, gan_count in results:
             for label in classes:
                 global_gan_count[label] += gan_count[label]
                 scaled_local_gan_weights[label].extend(scaled_weights[label])
 
-        # Aggregation der GAN-Gewichte
+        # aggregation of GAN-weights
         average_gan_weights = {}
         for label in classes:
             scaled = list(map(lambda x: fly_smote.scale_model_weights(x, 1 / global_gan_count[label]),
@@ -240,27 +242,28 @@ def run():
 
         global_gan.set_all_weights(average_gan_weights)
 
-    # Federated learning loop
+        # Federated learning loop
     for round_num in tqdm(range(comms_rounds), desc="Communication Rounds"):
 
         # Get global model weights
         global_weights = global_model.get_weights()
 
-        # Collect scaled local model weights
-        scaled_local_weights = []
-
         # Calculate global data count for scaling
         # Calculate before so, the original size sets the impact for the global model.
         # So the synthetic created data does not higher the impact
         # TODO: does it make sense like this ?
-        global_count = sum([len(client) * batch_size for client in clients.values()])
+        global_count = sum([len(client) for client in clients.values()])
 
-        client_args_list = [(
-            client_name, client_data, global_weights, X_train, batch_size, early_stopping,
-            fly_smote, threshold, k_value, r_value, local_epochs,
-            loss_function, lr_schedule, metrics, global_count, g_value, global_gan
-        ) for client_name, client_data in clients.items()]
-        scaled_local_weights = map(train_client, client_args_list)
+        args_list = [
+            (
+                client_name, client_data, global_weights, X_train, batch_size, early_stopping,
+                fly_smote, threshold, k_value, r_value, local_epochs,
+                loss_function, lr_schedule, metrics, global_count, g_value, global_gan
+            )
+            for client_name, client_data in clients.items()
+        ]
+
+        scaled_local_weights = map(train_client, args_list)
 
         # Aggregate scaled weights and update global model
         average_weights = fly_smote.sum_scaled_weights(scaled_local_weights)

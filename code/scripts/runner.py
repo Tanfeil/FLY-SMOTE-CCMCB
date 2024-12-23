@@ -43,7 +43,7 @@ def batch_run(param_file="./config/params.json"):
         print(f"Running variant {i + 1} with parameters: {params}")
 
         # Erstelle den Befehl mit den Parametern
-        cmd = ["python", "code/FLY-SMOTE-CCMCB/main.py"]  # Pfad zu `main.py`
+        cmd = ["python", "code/FLY-SMOTE_parallel/main.py"]  # Pfad zu `main.py`
         for key, value in params.items():
             cmd.append(f"--{key}")
             cmd.append(str(value))

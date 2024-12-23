@@ -12,9 +12,9 @@ import warnings
 
 import numpy as np
 import tensorflow as tf
+import keras
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
-from tensorflow.keras.layers import Dense
 
 
 # Custom script
@@ -81,7 +81,7 @@ class FlySmote:
         return {client_names[i]: shards[i] for i in range(len(client_names))}
 
     @staticmethod
-    def batch_data(data_shard, batch_size=4):
+    def batch_data_shard(data_shard, batch_size=4):
         """
         Converts a client's data shard into a TensorFlow dataset.
 
@@ -94,6 +94,22 @@ class FlySmote:
         """
         data, labels = zip(*data_shard)  # Unzip the data and labels
         dataset = tf.data.Dataset.from_tensor_slices((list(data), list(labels)))  # Create a dataset
+        return dataset.shuffle(len(labels)).batch(batch_size, drop_remainder=True)  # Shuffle and batch the dataset
+
+    @staticmethod
+    def batch_data(data, labels, batch_size=4):
+        """
+        Converts a client's data into a TensorFlow dataset.
+
+        Args:
+            data: A list of data
+            labels: A list of binarized labels
+            batch_size: The batch size for the dataset.
+
+        Returns:
+            A TensorFlow Dataset object.
+        """
+        dataset = tf.data.Dataset.from_tensor_slices((data, labels))  # Create a dataset
         return dataset.shuffle(len(labels)).batch(batch_size, drop_remainder=True)  # Shuffle and batch the dataset
 
     @staticmethod
@@ -168,7 +184,7 @@ class FlySmote:
         Returns:
             The accuracy, loss, and confusion matrix.
         """
-        cce = tf.keras.losses.BinaryCrossentropy()  # Define binary cross-entropy loss
+        cce = keras.losses.BinaryCrossentropy()  # Define binary cross-entropy loss
         logits = model.predict(X_test)  # Get predictions from the model
         predictions = np.around(logits)  # Round the predictions
         predictions = np.nan_to_num(predictions)  # Handle any NaN values

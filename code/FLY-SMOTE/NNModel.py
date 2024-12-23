@@ -9,8 +9,8 @@ Description:
 This module defines a simple Multi-Layer Perceptron (MLP) class for binary classification tasks.
 """
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Input
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Input
 
 
 class SimpleMLP:
@@ -24,7 +24,7 @@ class SimpleMLP:
             n (int): A multiplier for determining the size of hidden layers.
 
         Returns:
-            tensorflow.keras.Model: A compiled MLP model with the defined architecture.
+            keras.Model: A compiled MLP model with the defined architecture.
 
         Model Architecture:
         - Input layer matching the number of features in the training data.

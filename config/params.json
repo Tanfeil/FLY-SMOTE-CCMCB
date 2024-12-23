@@ -5,19 +5,19 @@
         "threshold": 0,
         "num_clients": [3, 5],
         "learning_rate": 0.01,
-        "comms_rounds": 80,
+        "comms_rounds": 50,
         "wandb_logging": true,
         "wandb_name": "Bank_FdgAvg_Baseline"
     },
     {
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
-        "k_value": [3, 5],
+        "k_value": [3, 5, 40],
         "r_value": {"range": [0.1, 0.6, 0.1]},
         "threshold": 0.33,
         "num_clients": [3, 5],
         "learning_rate": 0.01,
-        "comms_rounds": 80,
+        "comms_rounds": 50,
         "wandb_logging": true
     }
 ]

@@ -41,7 +41,7 @@ def run_variant(params):
     print(f"Running with parameters: {params}")
 
     # Erstelle den Befehl mit den Parametern
-    cmd = ["python", "code/FLY-SMOTE_parallel/main.py"]  # Pfad zu `main.py`
+    cmd = ["python", "code/FLY-SMOTE-CCMCB_parallel/main.py"]  # Pfad zu `main.py`
     for key, value in params.items():
         cmd.append(f"--{key}")
         cmd.append(str(value))

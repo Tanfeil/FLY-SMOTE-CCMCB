@@ -3,6 +3,7 @@ import argparse
 import math
 import random
 import time
+from multiprocessing import Pool
 
 import numpy as np
 import tensorflow as tf
@@ -14,6 +15,10 @@ from keras.optimizers import SGD
 from keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../FLY-SMOTE"))
 from FlySmote import FlySmote
 from NNModel import SimpleMLP
 from ReadData import ReadData
@@ -72,9 +77,10 @@ def train_client(client_args):
                     verbose=0)
 
     # Scale local weights
+
     scaling_factor = local_count / global_count
     scaled_weights = fly_smote.scale_model_weights(local_model.get_weights(), scaling_factor)
-    print(client_name)
+
     k.clear_session()
     return scaled_weights
 
@@ -99,6 +105,7 @@ def run():
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
     parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
+    parser.add_argument("-wm", "--wandb_mode", type=str, default="offline", help="Mode of W&B logging.")
 
     args = parser.parse_args()
 
@@ -125,7 +132,7 @@ def run():
 
     # W&B logging setup (only if enabled)
     if args.wandb_logging:
-        wandb.init(project="FLY-SMOTE", name=args.wandb_name, config=vars(args))
+        wandb.init(project="FLY-SMOTE", name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
@@ -173,22 +180,27 @@ def run():
         # Get global model weights
         global_weights = global_model.get_weights()
 
+        # Collect scaled local model weights
+        scaled_local_weights = []
+
         # Calculate global data count for scaling
         # Calculate before so, the original size sets the impact for the global model.
         # So the synthetic created data does not higher the impact
         # TODO: does it make sense like this ?
         global_count = sum([len(client) for client in clients.values()])
 
-        args_list = [
-            (
-                client_name, client_data, global_weights, X_train, batch_size, early_stopping,
-                fly_smote, threshold, k_value, r_value, local_epochs,
-                loss_function, lr_schedule, metrics, global_count
-            )
-            for client_name, client_data in clients.items()
-        ]
+        # Parallel client training
+        with Pool(processes=num_clients) as pool:
+            args_list = [
+                (
+                    client_name, client_data, global_weights, X_train, batch_size, early_stopping,
+                    fly_smote, threshold, k_value, r_value, local_epochs,
+                    loss_function, lr_schedule, metrics, global_count
+                )
+                for client_name, client_data in clients.items()
+            ]
 
-        scaled_local_weights = map(train_client, args_list)
+            scaled_local_weights = pool.map(train_client, args_list)
 
         # Aggregate scaled weights and update global model
         average_weights = fly_smote.sum_scaled_weights(scaled_local_weights)
