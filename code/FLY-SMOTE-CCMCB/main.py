@@ -11,13 +11,19 @@ from keras.callbacks import EarlyStopping
 from keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
+from code.shared.FlySmote import FlySmote
+from code.shared.GAN import MultiClassGAN
+from code.shared.NNModel import SimpleMLP
+from code.shared.helper import read_data
+from code.shared.train_client import train_client_with_gan, train_gan_client
+
 def run():
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
     parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
     parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
-    parser.add_argument("-g", "--g_value", type=int, default=3, help="Number of samples from GAN.")
+    parser.add_argument("-g", "--g_value", type=float, default=3, help="Number of samples from GAN.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
     parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
     parser.add_argument("-nc", "--num_clients", type=int, default=3, help="Number of clients for federated learning.")

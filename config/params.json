@@ -3,22 +3,22 @@
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
         "threshold": 0,
-        "num_clients": [3, 5],
-        "learning_rate": 0.01,
-        "comms_rounds": 50,
+        "num_clients": [5, 10],
+        "learning_rate": 0.02,
+        "comms_rounds": 80,
         "wandb_logging": true,
         "wandb_name": "Bank_FdgAvg_Baseline"
     },
     {
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
-        "k_value": 40,
-        "r_value": {"range": [0.1, 0.6, 0.1]},
-        "threshold": 0.33,
-        "num_clients": [3, 5],
-        "learning_rate": 0.01,
-        "comms_rounds": 50,
+        "k_value": 60,
+        "r_value": {"range": [0.5, 0.6, 0.1]},
+        "threshold": [0.33, 0.4],
+        "num_clients": [5, 10],
+        "learning_rate": [0.02],
+        "comms_rounds": 80,
         "wandb_logging": true,
-        "g_value": {"range": [0.6, 3, 0.3]}
+        "g_value": {"range": [3.5, 4, 0.4]}
     }
 ]

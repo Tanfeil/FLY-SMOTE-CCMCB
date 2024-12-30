@@ -1,6 +1,6 @@
 import numpy as np
 
-from code.shared.ReadData import ReadData
+from .ReadData import ReadData
 
 def read_data(file_name, directory):
     data_loader = ReadData(file_name)

@@ -3,7 +3,7 @@ import argparse
 import math
 import random
 import time
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import tensorflow as tf
@@ -25,7 +25,7 @@ def run():
     parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
     parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
-    parser.add_argument("-g", "--g_value", type=int, default=3, help="Number of samples from GAN.")
+    parser.add_argument("-g", "--g_value", type=float, default=3, help="Number of samples from GAN.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
     parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
     parser.add_argument("-nc", "--num_clients", type=int, default=3, help="Number of clients for federated learning.")
@@ -68,7 +68,7 @@ def run():
 
     # W&B logging setup (only if enabled)
     if args.wandb_logging:
-        wandb.init(project="FLY-SMOTE-CCMCB", name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
+        wandb.init(project="FLY-SMOTE-CCMCB_Bank", name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
@@ -119,14 +119,14 @@ def run():
         global_gan_count = {label: 0 for label in classes}
         scaled_local_gan_weights = {label: [] for label in classes}
 
-        with Pool(processes=num_clients) as pool:
+        with ProcessPoolExecutor(max_workers=num_clients) as executor:
             # Parallelisiertes Training für Clients
             client_args_list = [
                 (client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes)
                 for client_name, client_data in clients.items()
             ]
 
-            results = pool.map(train_gan_client, client_args_list)
+            results = list(executor.map(train_gan_client, client_args_list))
 
         # accumulate results
         for scaled_weights, gan_count in results:
@@ -156,7 +156,7 @@ def run():
         global_count = sum([len(client) for client in clients.values()])
 
         # Parallel client training
-        with Pool(processes=num_clients) as pool:
+        with ProcessPoolExecutor(max_workers=num_clients) as executor:
             args_list = [
                 (
                     client_name, client_data, global_weights, X_train, batch_size, early_stopping,
@@ -166,7 +166,7 @@ def run():
                 for client_name, client_data in clients.items()
             ]
 
-            scaled_local_weights = pool.map(train_client_with_gan, args_list)
+            scaled_local_weights = results = list(executor.map(train_client_with_gan, args_list))
 
         # Aggregate scaled weights and update global model
         average_weights = fly_smote.sum_scaled_weights(scaled_local_weights)
@@ -183,20 +183,20 @@ def run():
             specificity = TN / (TN + FP)
             balanced_accuracy = (sensitivity + specificity) / 2
             g_mean = math.sqrt(sensitivity * specificity)
-            fp_rate = FP / (FP + TN)
-            fn_rate = FN / (FN + TP)
-            mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1 * 1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+            #fp_rate = FP / (FP + TN)
+            #fn_rate = FN / (FN + TP)
+            #mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1 * 1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
 
             # Update metrics history
             metrics_history['sensitivity'].append(sensitivity)
             metrics_history['specificity'].append(specificity)
             metrics_history['balanced_accuracy'].append(balanced_accuracy)
             metrics_history['g_mean'].append(g_mean)
-            metrics_history['fp_rate'].append(fp_rate)
-            metrics_history['fn_rate'].append(fn_rate)
+            #metrics_history['fp_rate'].append(fp_rate)
+            #metrics_history['fn_rate'].append(fn_rate)
             metrics_history['accuracy'].append(global_accuracy)
             metrics_history['loss'].append(global_loss)
-            metrics_history['mcc'].append(mcc)
+            #metrics_history['mcc'].append(mcc)
 
             # Log metrics to W&B if enabled
             if args.wandb_logging:
@@ -216,6 +216,5 @@ def run():
 
 if __name__ == '__main__':
     import multiprocessing
-
     multiprocessing.set_start_method('spawn')
     run()
