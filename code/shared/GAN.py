@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.util import tf_decorator
+
 
 class MultiClassGAN:
     def __init__(self, input_dim, noise_dim=100):
@@ -27,26 +29,34 @@ class MultiClassGAN:
 
     def build_generator(self):
         model = tf.keras.Sequential([
-            tf.keras.layers.Dense(128, activation='relu', input_dim=self.noise_dim),
+            tf.keras.layers.Input(shape=(self.noise_dim,)),
+            #tf.keras.layers.Dense(256, activation='relu'),
+            #tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dense(self.input_dim, activation='tanh')
         ])
         return model
 
     def build_discriminator(self):
         model = tf.keras.Sequential([
-            tf.keras.layers.Dense(128, activation='relu', input_dim=self.input_dim),
+            tf.keras.layers.Input(shape=(self.input_dim,)),
+            #tf.keras.layers.Dense(256, activation='relu'),
+            #tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Dense(1, activation='sigmoid')
         ])
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002), loss='binary_crossentropy')
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
 
     def build_gan(self, generator, discriminator):
         discriminator.trainable = False
         model = tf.keras.Sequential([generator, discriminator])
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002), loss='binary_crossentropy')
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
 
-    def train(self, class_label, real_data, epochs=10, batch_size=32):
+    def train(self, class_label, real_data, epochs=50, batch_size=16, n_critic=2):
         """
         Trains the GAN for a specific class.
         """
@@ -56,24 +66,29 @@ class MultiClassGAN:
 
         half_batch = batch_size // 2
         for epoch in range(epochs):
-            # Train Discriminator
-            idx = np.random.randint(0, real_data.shape[0], half_batch)
-            real_samples = real_data[idx]
-            noise = np.random.normal(0, 1, (half_batch, self.noise_dim))
-            fake_samples = generator.predict(noise)
+            for _ in range(n_critic):
+                # Train Discriminator
+                discriminator.trainable = True
 
-            real_labels = np.ones((half_batch, 1))
-            fake_labels = np.zeros((half_batch, 1))
+                idx = np.random.randint(0, real_data.shape[0], half_batch)
+                real_samples = real_data[idx]
+                noise = np.random.normal(0, 1, (half_batch, self.noise_dim))
+                fake_samples = generator.predict(noise, verbose=0)
 
-            d_loss_real = discriminator.train_on_batch(real_samples, real_labels)
-            d_loss_fake = discriminator.train_on_batch(fake_samples, fake_labels)
+                real_labels = np.ones((half_batch, 1))
+                fake_labels = np.zeros((half_batch, 1))
+
+                d_loss_real = discriminator.train_on_batch(real_samples, real_labels)
+                d_loss_fake = discriminator.train_on_batch(fake_samples, fake_labels)
 
             # Train Generator
+            discriminator.trainable = False
             noise = np.random.normal(0, 1, (batch_size, self.noise_dim))
             valid_labels = np.ones((batch_size, 1))
+
             g_loss = gan_model.train_on_batch(noise, valid_labels)
 
-            if epoch % 100 == 0:
+            if epoch % 10 == 0:
                 print(f"[Class {class_label}] Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, class_label, num_samples):
