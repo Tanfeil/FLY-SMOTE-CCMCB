@@ -43,6 +43,7 @@ def run():
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
     parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
+    parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
     parser.add_argument("-wm", "--wandb_mode", type=str, default="offline", help="Mode of W&B logging.")
 
@@ -73,7 +74,7 @@ def run():
 
     # W&B logging setup (only if enabled)
     if args.wandb_logging:
-        wandb.init(project="FLY-SMOTE-CCMCB_Bank", name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
+        wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)

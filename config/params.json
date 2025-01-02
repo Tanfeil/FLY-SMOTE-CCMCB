@@ -1,5 +1,6 @@
 [
     {
+        "module": "code.FLY-SMOTE-CCMCB.main",
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
         "threshold": 0,
@@ -7,18 +8,27 @@
         "learning_rate": 0.02,
         "comms_rounds": 80,
         "wandb_logging": true,
-        "wandb_name": "Bank_FdgAvg_Baseline"
+        "wandb_project": "FLY-SMOTE-CCMCB_Bank_GAN-working",
+        "wandb_name": "Bank_FdgAvg_Baseline",
+        "workers": 10,
+        "seed": 42
     },
     {
+        "module": "code.FLY-SMOTE-CCMCB.main",
         "dataset_name": "Bank",
         "filepath": "./dataset/bank/bank/bank-full",
         "k_value": 60,
         "r_value": {"range": [0.5, 0.6, 0.1]},
         "threshold": [0.33, 0.4],
         "num_clients": [5, 10],
-        "learning_rate": [0.02],
+        "learning_rate": 0.02,
         "comms_rounds": 80,
         "wandb_logging": true,
-        "g_value": {"range": [3.5, 4, 0.4]}
+        "wandb_project": "FLY-SMOTE-CCMCB_Bank_GAN-working",
+        "g_value": {"range": [3.5, 4, 0.4]},
+        "epochs_gan": 50,
+        "ccmcb": [false, true],
+        "workers": 10,
+        "seed": 42
     }
 ]

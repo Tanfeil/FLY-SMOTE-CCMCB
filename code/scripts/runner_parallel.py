@@ -32,15 +32,15 @@ def load_params(param_file):
 
 
 def run_variant(params):
-    """Führt eine einzelne Variante aus."""
-    cmd = ["python", "-m", "code.FLY-SMOTE-CCMCB_parallel.main"]
+    """Runs a single Variant"""
+    cmd = ["python", "-m", params['module']]
+    del params['module']
+
     for key, value in params.items():
         cmd.extend([f"--{key}", str(value)])
 
     if params.get("wandb_logging") and "wandb_name" not in params:
-        cmd.extend(["--wandb_name", f"FLY-SMOTE-CCMCB_k{params['k_value']}_r{params['r_value']}_t{params['threshold']}"])
-
-    cmd.extend(["--seed", "42"])
+        cmd.extend(["--wandb_name", f"FLY-SMOTE{'-CCMCB' if params['ccmcb'] else ''}_{params['dataset_name']}_k{params['k_value']}_r{params['r_value']}_t{params['threshold']}"])
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     return {
@@ -51,7 +51,7 @@ def run_variant(params):
     }
 
 
-def batch_run(param_file, max_workers, num_tasks, task_id):
+def batch_run(param_file, max_workers, num_tasks, task_id, verbose=False):
     """Führt nur den Teil der Varianten aus, der diesem Task zugeordnet ist."""
     params_list = load_params(param_file)
     total_variants = len(params_list)
@@ -64,7 +64,8 @@ def batch_run(param_file, max_workers, num_tasks, task_id):
 
     # Subset der Parameter für diesen Task
     params_subset = params_list[start_idx:end_idx]
-    print(f"Task {task_id} is running {len(params_subset)} Variants (indices {start_idx} to {end_idx - 1})")
+    if verbose:
+        print(f"Task {task_id} is running {len(params_subset)} Variants (indices {start_idx} to {end_idx - 1})")
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(run_variant, params_subset))
@@ -80,10 +81,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parallel Batch Runner")
     parser.add_argument("--param_file", type=str, default="./config/params.json", help="Path to parameter file")
     parser.add_argument("--max_workers", type=int, default=1, help="Maximum workers for subprocesses")
-    parser.add_argument("--num_tasks", type=int, required=True, help="Total number of tasks")
-    parser.add_argument("--task_id", type=int, required=True, help="Task ID (0-based index)")
+    parser.add_argument("--num_tasks", type=int, default=1, help="Total number of tasks")
+    parser.add_argument("--task_id", type=int, default=None, help="Task ID (0-based index)")
+    parser.add_argument("--verbose", type=bool, default=False)
     args = parser.parse_args()
+
+    # Überprüfen, ob task_id erforderlich ist
+    if args.num_tasks != 1 and args.task_id is None:
+        parser.error("--task_id is required when num_tasks != 1")
 
     import multiprocessing
     multiprocessing.set_start_method('spawn')
-    batch_run(args.param_file, args.max_workers, args.num_tasks, args.task_id)
+    batch_run(args.param_file, args.max_workers, args.num_tasks, args.task_id, args.verbose)
