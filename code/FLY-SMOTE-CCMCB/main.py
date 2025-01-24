@@ -143,10 +143,7 @@ def run():
                     for client_name, client_data in clients.items()
                 ]
 
-                if round_num <= 8:
-                    results = list(executor.map(train_gan_client_all_data, client_args_list))
-                else:
-                    results = list(executor.map(train_gan_client_class_data, client_args_list))
+                results = list(executor.map(train_gan_client_class_data, client_args_list))
 
             # accumulate results
             for scaled_weights, gan_count in results:

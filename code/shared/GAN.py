@@ -23,7 +23,7 @@ class MultiClassGAN:
         self.generator_layers=generator_layers
         self.discriminator_layers=discriminator_layers
 
-    def add_class(self, class_label, use_pretrained=False):
+    def add_class(self, class_label, use_pretrained=True):
         """
         Adds a GAN for a specific class.
         """
