@@ -1,0 +1,34 @@
+[
+    {
+        "module": "code.FLY-SMOTE-CCMCB.main",
+        "dataset_name": "Adult",
+        "filepath": "./dataset/adult/adult",
+        "threshold": 0,
+        "num_clients": [5, 10],
+        "learning_rate": 0.02,
+        "comms_rounds": 80,
+        "wandb_logging": true,
+        "wandb_project": "FLY-SMOTE-CCMCB_Adult_Test",
+        "wandb_name": "Bank_FdgAvg_Baseline",
+        "workers": 10,
+        "seed": [14, 1234, 500, 1010201201203]
+    },
+    {
+        "module": "code.FLY-SMOTE-CCMCB.main",
+        "dataset_name": "Adult",
+        "filepath": "./dataset/adult/adult",
+        "k_value": 60,
+        "r_value": {"range": [0.5, 0.6, 0.1]},
+        "threshold": [0.33, 0.4],
+        "num_clients": [5, 10],
+        "learning_rate": 0.02,
+        "comms_rounds": 80,
+        "wandb_logging": true,
+        "wandb_project": "FLY-SMOTE-CCMCB_Adult_Test",
+        "g_value": {"range": [3.5, 4, 0.4]},
+        "epochs_gan": 50,
+        "ccmcb": [false, true],
+        "workers": 10,
+        "seed": [14, 1234, 500, 1010201201203]
+    }
+]
