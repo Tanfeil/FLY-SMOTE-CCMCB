@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import argparse
+import copy
+import logging
 import math
 import random
 import time
@@ -16,16 +18,20 @@ from code.shared.FlySmote import FlySmote
 from code.shared.GAN import MultiClassGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
+from code.shared.logger_config import configure_logger
 from code.shared.structs import ClientArgs, GANClientArgs
-from code.shared.train_client import train_client, train_gan_client
+from code.shared.train_client import train_client, train_gan_client, train_gan_client_all_data, \
+    train_gan_client_class_data
 
+logger = logging.getLogger()
+# TODO: find out why logging level is sqitched
 
 def run():
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
     parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
     parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
-    parser.add_argument("--ccmcb", type=bool, default=False, help="Run with GAN or not")
+    parser.add_argument("--ccmcb", action='store_true', default=False, help="Run with GAN or not")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
     parser.add_argument("-g", "--g_value", type=float, default=3, help="Ratio of samples from GAN.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
@@ -35,6 +41,11 @@ def run():
     parser.add_argument("-cr", "--comms_rounds", type=int, default=30, help="Number of communication rounds.")
     parser.add_argument("-e", "--epochs", type=int, default=3, help="Number of local epochs.")
     parser.add_argument("-eg", "--epochs_gan", type=int, default=50, help="Number of local gan epochs.")
+    parser.add_argument("--discriminator", type=int, nargs='+', default=[256, 128],
+                        help="Sizes of Dense Layers for discriminator")
+    parser.add_argument("--generator", type=int, nargs='+', default=[128, 256],
+                        help="Sizes of Dense Layers for generator")
+    parser.add_argument("--noise", type=int, default=100, help="Size of noise for generator")
     parser.add_argument("-lf", "--loss_function", type=str, default="binary_crossentropy", help="Loss function to use.")
     parser.add_argument("-b", "--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("-m", "--metrics", nargs='+', default=["accuracy"],
@@ -42,18 +53,20 @@ def run():
     parser.add_argument("-wr", "--workers",type=int, default=1, help="Number of workers for training. 1 for non parallel run")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
-    parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
+    parser.add_argument("--wandb_logging", action='store_true', default=False, help="Enable W&B logging.")
     parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
     parser.add_argument("-wm", "--wandb_mode", type=str, default="offline", help="Mode of W&B logging.")
 
     args = parser.parse_args()
 
+    configure_logger(verbose=False)
+
     if args.seed is not None:
         random.seed(args.seed)
         np.random.seed(args.seed)
         tf.random.set_seed(args.seed)
-        print(f"Random seed set to: {args.seed}")
+        logger.info(f"Random seed set to: {args.seed}")
 
     # Assign parameters
     dataset_name = args.dataset_name
@@ -67,6 +80,11 @@ def run():
     comms_rounds = args.comms_rounds
     local_epochs = args.epochs
     local_gan_epochs = args.epochs_gan
+    discriminator_layers = copy.copy(args.discriminator)
+    args.discriminator = "".join([str(v) + "," for v in discriminator_layers])
+    generator_layers = copy.copy(args.generator)
+    args.generator = "".join([str(v) + "," for v in generator_layers])
+    noise = args.noise
     loss_function = args.loss_function
     batch_size = args.batch_size
     attribute_index = args.attribute_index
@@ -98,31 +116,17 @@ def run():
 
     early_stopping = EarlyStopping(patience=5, restore_best_weights=True)
 
-
-
     # Initialize global model
     global_model = SimpleMLP.build(X_train, n=1)
 
+    classes = [0, 1]
+
     global_gan = None
     if args.ccmcb:
-        global_gan = MultiClassGAN(input_dim=X_train.shape[1])
-        global_gan.add_classes([0, 1])
-
-    # Metrics tracking
-    metrics_history = {
-        'sensitivity': [],
-        'specificity': [],
-        'balanced_accuracy': [],
-        'g_mean': [],
-        'fp_rate': [],
-        'fn_rate': [],
-        'accuracy': [],
-        'loss': [],
-        'mcc': []
-    }
+        global_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+        global_gan.add_classes(classes)
 
     start_time = time.time()
-    classes = [0, 1]
 
     # GAN-Loop
     if args.ccmcb:
@@ -134,11 +138,15 @@ def run():
             with ProcessPoolExecutor(max_workers=args.workers) as executor:
                 # Parallelisiertes Training für Clients
                 client_args_list = [
-                    GANClientArgs(client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_gan_epochs)
+                    GANClientArgs(client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes,
+                                  local_gan_epochs, noise, discriminator_layers, generator_layers)
                     for client_name, client_data in clients.items()
                 ]
 
-                results = list(executor.map(train_gan_client, client_args_list))
+                # if round_num <= 8:
+                results = list(executor.map(train_gan_client_class_data, client_args_list))
+                # else:
+                #     results = list(executor.map(train_gan_client_class_data, client_args_list))
 
             # accumulate results
             for scaled_weights, gan_count in results:
@@ -154,6 +162,12 @@ def run():
                 average_gan_weights[label] = fly_smote.sum_scaled_weights(scaled)
 
             global_gan.set_all_weights(average_gan_weights)
+
+            test_results = MultiClassGAN.test_gan(global_gan, X_test, Y_test)
+            logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
+
+            if args.wandb_logging:
+                wandb.log({f"{label}_{key}": value for label, metrics in test_results.items() for key, value in metrics.items()}, step=round_num)
 
         # Federated learning loop
     for round_num in tqdm(range(comms_rounds), desc="Communication Rounds"):
@@ -195,20 +209,6 @@ def run():
             specificity = TN / (TN + FP)
             balanced_accuracy = (sensitivity + specificity) / 2
             g_mean = math.sqrt(sensitivity * specificity)
-            #fp_rate = FP / (FP + TN)
-            #fn_rate = FN / (FN + TP)
-            #mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1 * 1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-
-            # Update metrics history
-            metrics_history['sensitivity'].append(sensitivity)
-            metrics_history['specificity'].append(specificity)
-            metrics_history['balanced_accuracy'].append(balanced_accuracy)
-            metrics_history['g_mean'].append(g_mean)
-            #metrics_history['fp_rate'].append(fp_rate)
-            #metrics_history['fn_rate'].append(fn_rate)
-            metrics_history['accuracy'].append(global_accuracy)
-            metrics_history['loss'].append(global_loss)
-            #metrics_history['mcc'].append(mcc)
 
             # Log metrics to W&B if enabled
             if args.wandb_logging:
@@ -219,11 +219,10 @@ def run():
                     'specificity': specificity,
                     'balanced_accuracy': balanced_accuracy,
                     'g_mean': g_mean
-                })
+                }, step=round_num)
 
     elapsed_time = time.time() - start_time
-    print(f"Training completed in {elapsed_time:.2f} seconds")
-    print(f"Final Accuracy: {metrics_history['accuracy'][-1]:.4f}")
+    logger.info(f"Training completed in {elapsed_time:.2f} seconds")
 
 
 if __name__ == '__main__':
