@@ -1,3 +1,4 @@
+import logging
 import math
 from dataclasses import asdict
 
@@ -11,6 +12,8 @@ from code.shared.NNModel import SimpleMLP
 from code.shared.helper import check_imbalance
 from code.shared.structs import ClientArgs, GANClientArgs
 
+logger = logging.getLogger()
+keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 def train_client(client_args: ClientArgs):
     client_name, client_data, global_weights, X_train, batch_size, early_stopping, fly_smote, threshold, k_value, r_value, local_epochs, loss_function, lr_schedule, metrics, global_count, g_value, global_gan = asdict(client_args).values()
@@ -50,7 +53,7 @@ def train_client(client_args: ClientArgs):
     X_train, X_val, Y_train, Y_val = train_test_split(x_client, y_client, test_size=0.1, shuffle=True)
     local_data = fly_smote.batch_data(X_train, Y_train, batch_size=batch_size)
     local_model.fit(local_data, validation_data=(X_val, Y_val), callbacks=[early_stopping], epochs=local_epochs,
-                    verbose=0)
+                    verbose=keras_verbose)
 
     # Scale local weights
     scaling_factor = local_count / global_count
@@ -60,10 +63,10 @@ def train_client(client_args: ClientArgs):
     return scaled_weights
 
 
-def train_gan_client(client_args: GANClientArgs):
-    client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs = asdict(client_args).values()
+def train_gan_client_class_data(client_args: GANClientArgs):
+    client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
 
-    local_gan = MultiClassGAN(input_dim=X_train.shape[1])
+    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
     local_gan.add_classes(classes)
     local_gan.set_all_weights(global_gan_weights)
 
@@ -79,7 +82,7 @@ def train_gan_client(client_args: GANClientArgs):
 
     for label in classes:
         d_major_x, d_minor_x = fly_smote.splitYtrain(x_client, y_client, label)
-        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 5, 0.1 * (1 if (minority_label == label) else -1))
+        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 10, 0.5)
         local_data = np.vstack([np.array(points) for points in X_syn])
 
         local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size)
@@ -87,6 +90,81 @@ def train_gan_client(client_args: GANClientArgs):
 
         # Skaliere Gewichte
         scaled_weights = fly_smote.scale_model_weights(local_gan.get_weights(label), len(local_data))
+        scaled_local_gan_weights[label].append(scaled_weights)
+
+    return scaled_local_gan_weights, global_gan_count
+
+def train_gan_client_all_data(client_args: GANClientArgs):
+    client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
+
+    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    local_gan.add_classes(classes)
+    local_gan.set_all_weights(global_gan_weights)
+
+    x_client, y_client = [], []
+    for x, y in client_data:
+        x_client.append(x)
+        y_client.append(y)
+
+    minority_label, _ = check_imbalance(y_client)
+    global_gan_count = {label: 0 for label in classes}
+    scaled_local_gan_weights = {label: [] for label in classes}
+
+    local_data = x_client
+
+    # Train the GAN for both classes with the same weights from the global model
+    for label in classes:
+        local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size)
+        global_gan_count[label] += len(local_data)
+
+        # Scaling the model weights for the current class
+        scaled_weights = fly_smote.scale_model_weights(local_gan.get_weights(label), len(local_data))
+        scaled_local_gan_weights[label].append(scaled_weights)
+
+    return scaled_local_gan_weights, global_gan_count
+
+def train_gan_client(client_args: GANClientArgs, train_on_all_data=False):
+    if train_on_all_data:
+        return train_gan_client_all_data(client_args)
+    else:
+        return train_gan_client_class_data(client_args)
+        #return train_gan_client_class_gan_data(client_args)
+
+def train_gan_client_real_data(client_args: GANClientArgs):
+    client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
+
+    # Initialisiere das lokale GAN
+    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    local_gan.add_classes(classes)
+    local_gan.set_all_weights(global_gan_weights)
+
+    # Extrahiere Client-Daten
+    x_client, y_client = [], []
+    for x, y in client_data:
+        x_client.append(x)
+        y_client.append(y)
+
+    x_client = np.array(x_client)
+    y_client = np.array(y_client)
+
+    # Initialisiere Rückgabestrukturen
+    global_gan_count = {label: 0 for label in classes}
+    scaled_local_gan_weights = {label: [] for label in classes}
+
+    for label in classes:
+        # Filtere echte Daten der aktuellen Klasse
+        minority_data = x_client[y_client == label]
+
+        if len(minority_data) == 0:
+            # Überspringe Klassen ohne Daten
+            continue
+
+        # Trainiere das GAN nur mit den echten Daten der Minderheitsklasse
+        local_gan.train(label, minority_data, epochs=local_epochs, batch_size=batch_size)
+        global_gan_count[label] += len(minority_data)
+
+        # Skaliere die Gewichte
+        scaled_weights = fly_smote.scale_model_weights(local_gan.get_weights(label), len(minority_data))
         scaled_local_gan_weights[label].append(scaled_weights)
 
     return scaled_local_gan_weights, global_gan_count
