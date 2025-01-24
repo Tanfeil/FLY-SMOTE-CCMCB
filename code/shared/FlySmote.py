@@ -51,29 +51,35 @@ class FlySmote:
             A dictionary where keys are client names and values are data shards (data, label tuples).
         """
         client_names = ['{}_{}'.format(initial, i + 1) for i in range(num_clients)]
+        data_list = list(zip(data_list, label_list))
 
+        # Split attributes uniquely to the clients
+        # Works only if |clients| = |domain(data[attribute_index])|
+        # TODO: implement check for this and then comment out
+        # if attribute_index is not None:
+        #     # Map each unique attribute value to its respective data points
+        #     attribute_data_map = {}
+        #     for data, label in data_list:
+        #         attribute_value = data[attribute_index]  # Get the attribute value using the index
+        #         if attribute_value not in attribute_data_map:
+        #             attribute_data_map[attribute_value] = []
+        #         attribute_data_map[attribute_value].append((data, label))
+        #
+        #     # Sort attributes and distribute them among clients
+        #     sorted_attributes = sorted(attribute_data_map.keys())
+        #     shards = [[] for _ in range(num_clients)]
+        #     for idx, attribute in enumerate(sorted_attributes):
+        #         print(idx)
+        #         shards[idx % num_clients].extend(attribute_data_map[attribute])
         if attribute_index is not None:
-            # Map each unique attribute value to its respective data points
-            attribute_data_map = {}
-            for data, label in zip(data_list, label_list):
-                attribute_value = data[attribute_index]  # Get the attribute value using the index
-                if attribute_value not in attribute_data_map:
-                    attribute_data_map[attribute_value] = []
-                attribute_data_map[attribute_value].append((data, label))
-
-            # Sort attributes and distribute them among clients
-            sorted_attributes = sorted(attribute_data_map.keys())
-            shards = [[] for _ in range(num_clients)]
-            for idx, attribute in enumerate(sorted_attributes):
-                shards[idx % num_clients].extend(attribute_data_map[attribute])
+            data_list = sorted(data_list, key=lambda x: x[0][attribute_index], reverse=True)
         else:
             # Randomize the data if no attribute_index is provided
-            data = list(zip(data_list, label_list))
-            random.shuffle(data)
+            random.shuffle(data_list)
 
-            # Shard the data and assign to clients
-            size = len(data) // num_clients
-            shards = [data[i:i + size] for i in range(0, size * num_clients, size)]
+        # Shard the data and assign to clients
+        size = len(data_list) // num_clients
+        shards = [data_list[i:i + size] for i in range(0, size * num_clients, size)]
 
         # Ensure the number of shards equals the number of clients
         assert len(shards) == len(client_names), "Mismatch between number of shards and clients."
@@ -240,6 +246,7 @@ class FlySmote:
         Ns = int(r * (len(d_major) - len(d_minor)))  # Calculate the number of synthetic samples
         Nks = int(Ns / k)  # Determine how many synthetic samples per neighbor
 
+
         dmin_rand = random.sample(d_minor, k)  # Randomly sample from the minority class
 
         # Perform interpolation to create synthetic data
@@ -292,13 +299,16 @@ class FlySmote:
             A tuple of synthetic feature data and synthetic labels.
         """
         d_major_x, d_minor_x = self.splitYtrain(client_training_x, client_training_y, minority_label)  # Split data
+        if len(d_minor_x) == 0:
+            return np.array(client_training_x), np.array(client_training_y)
         x_syn = self.kSMOTE(d_major_x, d_minor_x, k, r)  # Generate synthetic data using k-SMOTE
         X_train_new = []  # List for new synthetic features
         Y_train_new = []  # List for new synthetic labels
 
         # Get the label of the minority class for new synthetic data
-        new_label = next(k for k in client_training_y if k == minority_label)
-        # TODO: new_label = minority_label ?
+        # new_label = next(k for k in client_training_y if k == minority_label)
+        # TODO: new_label = minority_label ? from old code
+        new_label = minority_label
 
         # Add the synthetic data and labels
         for j in x_syn:
