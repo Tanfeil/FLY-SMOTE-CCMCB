@@ -69,8 +69,8 @@
         "ccmcb": true,
         "g_value": 3.5,
         "epochs_gan": 20,
-        "generator": [[32, 64], [32, 64, 128]],
-        "discriminator": [[64, 32], [128, 64, 32]],
+        "generator": [[32, 64]],
+        "discriminator": [[64, 32]],
         "noise": [5, 10, 50]
     }
 ]
