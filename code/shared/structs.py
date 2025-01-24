@@ -40,3 +40,6 @@ class GANClientArgs:
     batch_size: int
     classes: list
     local_epochs: int
+    noise: Optional[int] = 100
+    discriminator_layers: Optional[list] = None
+    generator_layers: Optional[list] = None
