@@ -85,7 +85,8 @@ def train_gan_client_class_data(client_args: GANClientArgs):
         X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 10, 0.5)
         local_data = np.vstack([np.array(points) for points in X_syn])
 
-        local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size)
+        # TODO: freeze layers?
+        local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size, freeze_layers=True)
         global_gan_count[label] += len(local_data)
 
         # Skaliere Gewichte
