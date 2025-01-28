@@ -90,9 +90,9 @@ class MultiClassGAN:
         self.discriminators[class_label] = discriminator
         self.gan_models[class_label] = gan_model
 
-    def add_classes(self, class_labels, generator_layers, discriminator_layers):
+    def add_classes(self, class_labels):
         for label in class_labels:
-            self.add_class(label, generator_layers, discriminator_layers)
+            self.add_class(label)
 
     def set_weights(self, class_label, weights):
         """
