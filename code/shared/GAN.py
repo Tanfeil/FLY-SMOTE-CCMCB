@@ -23,22 +23,22 @@ class MultiClassGAN:
         self.generator_layers=generator_layers
         self.discriminator_layers=discriminator_layers
 
-    def add_class(self, class_label, use_pretrained=True):
+    def _add_class(self, class_label, use_pretrained=True):
         """
         Adds a GAN for a specific class.
         """
-        generator = self.build_generator(use_pretrained)
-        discriminator = self.build_discriminator(use_pretrained)
-        gan_model = self.build_gan(generator, discriminator)
+        generator = self._build_generator(use_pretrained)
+        discriminator = self._build_discriminator(use_pretrained)
+        gan_model = self._build_gan(generator, discriminator)
         self.generators[class_label] = generator
         self.discriminators[class_label] = discriminator
         self.gan_models[class_label] = gan_model
 
     def add_classes(self, class_labels):
         for label in class_labels:
-            self.add_class(label)
+            self._add_class(label)
 
-    def build_generator(self, use_pretrained=False):
+    def _build_generator(self, use_pretrained=False):
         if use_pretrained:
             base_model = VGG16(include_top=False, input_shape=(self.noise_dim, self.noise_dim, 3))
             base_model.trainable = False  # Freeze pretrained layers
@@ -65,7 +65,7 @@ class MultiClassGAN:
                                         + [tf.keras.layers.Dense(self.input_dim, activation='tanh')])
         return model
 
-    def build_discriminator(self, use_pretrained=False):
+    def _build_discriminator(self, use_pretrained=False):
         if use_pretrained:
             base_model = ResNet50(include_top=False, input_shape=(self.input_dim, self.input_dim, 3))
             base_model.trainable = False  # Freeze pretrained layers
@@ -92,7 +92,7 @@ class MultiClassGAN:
             model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
 
-    def build_gan(self, generator, discriminator):
+    def _build_gan(self, generator, discriminator):
         discriminator.trainable = False
         model = tf.keras.Sequential([generator, discriminator])
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
