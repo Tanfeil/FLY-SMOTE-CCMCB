@@ -85,7 +85,7 @@ def train_gan_client_class_data(client_args: GANClientArgs):
 
     for label in classes:
         d_major_x, d_minor_x = fly_smote.splitYtrain(x_client, y_client, label)
-        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 5, 0.1)
+        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 5, 0.1 * (1 if label == minority_label else -1))
         local_data = np.vstack([np.array(points) for points in X_syn])
 
         local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size, freeze_layers=True)
