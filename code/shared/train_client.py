@@ -7,7 +7,7 @@ import numpy as np
 from keras.optimizers import SGD
 from sklearn.model_selection import train_test_split
 
-from code.shared.GAN import MultiClassGAN
+from code.shared.GAN import MultiClassBaseGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import check_imbalance
 from code.shared.structs import ClientArgs, GANClientArgs
@@ -66,7 +66,7 @@ def train_client(client_args: ClientArgs):
 def train_gan_client_class_data(client_args: GANClientArgs):
     client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
 
-    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    local_gan = MultiClassBaseGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
     local_gan.add_classes(classes)
     local_gan.set_all_weights(global_gan_weights)
 
@@ -85,7 +85,6 @@ def train_gan_client_class_data(client_args: GANClientArgs):
         X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 10, 0.5)
         local_data = np.vstack([np.array(points) for points in X_syn])
 
-        # TODO: freeze layers?
         local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size, freeze_layers=True)
         global_gan_count[label] += len(local_data)
 
@@ -98,7 +97,7 @@ def train_gan_client_class_data(client_args: GANClientArgs):
 def train_gan_client_all_data(client_args: GANClientArgs):
     client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
 
-    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    local_gan = MultiClassBaseGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
     local_gan.add_classes(classes)
     local_gan.set_all_weights(global_gan_weights)
 
@@ -135,7 +134,7 @@ def train_gan_client_real_data(client_args: GANClientArgs):
     client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_epochs, noise, discriminator_layers, generator_layers = asdict(client_args).values()
 
     # Initialisiere das lokale GAN
-    local_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    local_gan = MultiClassBaseGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
     local_gan.add_classes(classes)
     local_gan.set_all_weights(global_gan_weights)
 

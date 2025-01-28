@@ -15,7 +15,7 @@ from keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
 from code.shared.FlySmote import FlySmote
-from code.shared.GAN import MultiClassGAN
+from code.shared.GAN import MultiClassBaseGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
 from code.shared.logger_config import configure_logger
@@ -123,7 +123,7 @@ def run():
 
     global_gan = None
     if args.ccmcb:
-        global_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+        global_gan = MultiClassBaseGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
         global_gan.add_classes(classes)
 
     start_time = time.time()
@@ -143,10 +143,7 @@ def run():
                     for client_name, client_data in clients.items()
                 ]
 
-                if round_num <= 8:
-                    results = list(executor.map(train_gan_client_all_data, client_args_list))
-                else:
-                    results = list(executor.map(train_gan_client_class_data, client_args_list))
+                results = list(executor.map(train_gan_client_class_data, client_args_list))
 
             # accumulate results
             for scaled_weights, gan_count in results:
@@ -163,7 +160,7 @@ def run():
 
             global_gan.set_all_weights(average_gan_weights)
 
-            test_results = MultiClassGAN.test_gan(global_gan, X_test, Y_test)
+            test_results = MultiClassBaseGAN.test_gan(global_gan, X_test, Y_test)
             logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
 
             if args.wandb_logging:
