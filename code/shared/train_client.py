@@ -76,13 +76,16 @@ def train_gan_client_class_data(client_args: GANClientArgs):
         x_client.append(x)
         y_client.append(y)
 
+    x_client = np.array(x_client)
+    y_client = np.array(y_client)
+
     minority_label, _ = check_imbalance(y_client)
     global_gan_count = {label: 0 for label in classes}
     scaled_local_gan_weights = {label: [] for label in classes}
 
     for label in classes:
         d_major_x, d_minor_x = fly_smote.splitYtrain(x_client, y_client, label)
-        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 10, 0.5)
+        X_syn = fly_smote.kSMOTE(d_major_x, d_minor_x, 5, 0.1)
         local_data = np.vstack([np.array(points) for points in X_syn])
 
         local_gan.train(label, local_data, epochs=local_epochs, batch_size=batch_size, freeze_layers=True)
@@ -105,6 +108,9 @@ def train_gan_client_all_data(client_args: GANClientArgs):
     for x, y in client_data:
         x_client.append(x)
         y_client.append(y)
+
+    x_client = np.array(x_client)
+    y_client = np.array(y_client)
 
     minority_label, _ = check_imbalance(y_client)
     global_gan_count = {label: 0 for label in classes}

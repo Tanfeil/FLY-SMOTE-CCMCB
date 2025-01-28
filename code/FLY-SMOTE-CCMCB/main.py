@@ -21,7 +21,7 @@ from code.shared.helper import read_data
 from code.shared.logger_config import configure_logger
 from code.shared.structs import ClientArgs, GANClientArgs
 from code.shared.train_client import train_client, train_gan_client, train_gan_client_all_data, \
-    train_gan_client_class_data
+    train_gan_client_class_data, train_gan_client_real_data
 
 logger = logging.getLogger()
 # TODO: find out why logging level is sqitched
@@ -143,7 +143,7 @@ def run():
                     for client_name, client_data in clients.items()
                 ]
 
-                results = list(executor.map(train_gan_client_class_data, client_args_list))
+                results = list(executor.map(train_gan_client_real_data, client_args_list))
 
             # accumulate results
             for scaled_weights, gan_count in results:
