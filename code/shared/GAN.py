@@ -221,8 +221,3 @@ class MultiClassBaseGAN(MultiClassGAN):
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
-
-class MultiClassTGAN(MultiClassGAN):
-    def __init__(self, input_dim, noise_dim=100):
-        super().__init__(input_dim, noise_dim)
-
