@@ -3,94 +3,32 @@ import logging
 
 import tensorflow as tf
 import numpy as np
-from keras.src.applications.resnet import ResNet50
-from keras.src.applications.vgg16 import VGG16
 
 logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
+import tensorflow as tf
+import numpy as np
+
 class MultiClassGAN:
-    def __init__(self, input_dim, noise_dim=100, generator_layers=None, discriminator_layers=None):
-        if discriminator_layers is None:
-            discriminator_layers = [256, 128]
-        if generator_layers is None:
-            generator_layers = [128, 256]
+    def __init__(self, input_dim, noise_dim=100):
         self.input_dim = input_dim
         self.noise_dim = noise_dim
-        self.generators = {}  # Dictionary to store generators per class
-        self.discriminators = {}  # Dictionary to store discriminators per class
-        self.gan_models = {}  # Dictionary to store GAN models per class
-        self.generator_layers=generator_layers
-        self.discriminator_layers=discriminator_layers
+        self.generators = {}
+        self.discriminators = {}
+        self.gan_models = {}
 
-    def _add_class(self, class_label, use_pretrained=True):
+    def _build_generator(self):
         """
-        Adds a GAN for a specific class.
+        This method should be implemented by subclasses.
         """
-        generator = self._build_generator(use_pretrained)
-        discriminator = self._build_discriminator(use_pretrained)
-        gan_model = self._build_gan(generator, discriminator)
-        self.generators[class_label] = generator
-        self.discriminators[class_label] = discriminator
-        self.gan_models[class_label] = gan_model
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def add_classes(self, class_labels):
-        for label in class_labels:
-            self._add_class(label)
-
-    def _build_generator(self, use_pretrained=False):
-        if use_pretrained:
-            base_model = VGG16(include_top=False, input_shape=(self.noise_dim, self.noise_dim, 3))
-            base_model.trainable = False  # Freeze pretrained layers
-
-            model = tf.keras.Sequential([
-                tf.keras.layers.Input(shape=(self.noise_dim,)),
-                tf.keras.layers.Dense(128 * 8 * 8, activation='relu'),  # Upsample
-                tf.keras.layers.Reshape((8, 8, 128)),
-                tf.keras.layers.Conv2DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu'),
-                base_model,  # Pretrained feature extractor
-                tf.keras.layers.Flatten(),
-                tf.keras.layers.Dense(self.input_dim, activation='tanh')
-            ])
-        else:
-            hidden_layer = []
-            for size in self.generator_layers:
-                hidden_layer.extend([
-                    tf.keras.layers.Dense(size, activation='relu'),
-                    tf.keras.layers.BatchNormalization()
-                ])
-
-            model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.noise_dim,))]
-                                        + hidden_layer
-                                        + [tf.keras.layers.Dense(self.input_dim, activation='tanh')])
-        return model
-
-    def _build_discriminator(self, use_pretrained=False):
-        if use_pretrained:
-            base_model = ResNet50(include_top=False, input_shape=(self.input_dim, self.input_dim, 3))
-            base_model.trainable = False  # Freeze pretrained layers
-
-            model = tf.keras.Sequential([
-                tf.keras.layers.Input(shape=(self.input_dim,)),
-                tf.keras.layers.Reshape((32, 32, 3)),  # Assuming data is reshaped to 32x32x3
-                base_model,  # Pretrained feature extractor
-                tf.keras.layers.Flatten(),
-                tf.keras.layers.Dense(1, activation='sigmoid')
-            ])
-        else:
-            hidden_layer = []
-            for size in self.discriminator_layers:
-                hidden_layer.extend([
-                    tf.keras.layers.Dense(size, activation='relu'),
-                    tf.keras.layers.Dropout(0.3)
-                ])
-
-            model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.input_dim,))]
-                                        + hidden_layer
-                                        + [tf.keras.layers.Dense(1, activation='sigmoid')])
-
-            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
-        return model
+    def _build_discriminator(self):
+        """
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _build_gan(self, generator, discriminator):
         discriminator.trainable = False
@@ -109,7 +47,6 @@ class MultiClassGAN:
         if freeze_layers:
             for layer in generator.layers[:-1]:
                 layer.trainable = False
-
             for layer in discriminator.layers[:-2]:
                 layer.trainable = False
 
@@ -123,7 +60,7 @@ class MultiClassGAN:
                 real_samples = real_data[idx]
                 noise = np.random.normal(0, 1, (half_batch, self.noise_dim))
 
-                fake_samples = generator.predict(noise, verbose=keras_verbose)
+                fake_samples = generator.predict(noise)
 
                 real_labels = np.ones((half_batch, 1))
                 fake_labels = np.zeros((half_batch, 1))
@@ -142,11 +79,20 @@ class MultiClassGAN:
                 print(f"[Class {class_label}] Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, class_label, num_samples):
-        """
-        Generates synthetic samples for a specific class.
-        """
         noise = np.random.normal(0, 1, (num_samples, self.noise_dim))
-        return self.generators[class_label].predict(noise, verbose=keras_verbose)
+        return self.generators[class_label].predict(noise)
+
+    def add_class(self, class_label):
+        generator = self._build_generator()
+        discriminator = self._build_discriminator()
+        gan_model = self._build_gan(generator, discriminator)
+        self.generators[class_label] = generator
+        self.discriminators[class_label] = discriminator
+        self.gan_models[class_label] = gan_model
+
+    def add_classes(self, class_labels, generator_layers, discriminator_layers):
+        for label in class_labels:
+            self.add_class(label, generator_layers, discriminator_layers)
 
     def set_weights(self, class_label, weights):
         """
@@ -240,4 +186,43 @@ class MultiClassGAN:
             }
 
         return results
+
+class MultiClassBaseGAN(MultiClassGAN):
+    def __init__(self, input_dim, noise_dim=100, generator_layers=None, discriminator_layers=None):
+        super().__init__(input_dim, noise_dim)
+        # Set default layer configurations if None are provided
+        self.generator_layers = generator_layers if generator_layers else [128, 256]
+        self.discriminator_layers = discriminator_layers if discriminator_layers else [256, 128]
+
+    def _build_generator(self):
+        hidden_layer = []
+        for size in self.generator_layers:
+            hidden_layer.extend([
+                tf.keras.layers.Dense(size, activation='relu'),
+                tf.keras.layers.BatchNormalization()
+            ])
+
+        model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.noise_dim,))]
+                                    + hidden_layer
+                                    + [tf.keras.layers.Dense(self.input_dim, activation='tanh')])
+        return model
+
+    def _build_discriminator(self):
+        hidden_layer = []
+        for size in self.discriminator_layers:
+            hidden_layer.extend([
+                tf.keras.layers.Dense(size, activation='relu'),
+                tf.keras.layers.Dropout(0.3)
+            ])
+
+        model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.input_dim,))]
+                                    + hidden_layer
+                                    + [tf.keras.layers.Dense(1, activation='sigmoid')])
+
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
+        return model
+
+class MultiClassTGAN(MultiClassGAN):
+    def __init__(self, input_dim, noise_dim=100):
+        super().__init__(input_dim, noise_dim)
 
