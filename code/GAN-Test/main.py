@@ -9,7 +9,7 @@ import wandb
 from tqdm import tqdm
 
 from code.shared.FlySmote import FlySmote
-from code.shared.GAN import MultiClassGAN
+from code.shared.GAN import ConditionalGAN
 from code.shared.helper import read_data
 from code.shared.structs import GANClientArgs
 from code.shared.train_client import train_gan_client
@@ -69,7 +69,7 @@ def run():
     # Create clients and batch their data
     clients = fly_smote.create_clients(X_train, Y_train, num_clients, initial='client', attribute_index=attribute_index)
 
-    global_gan = MultiClassGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
+    global_gan = ConditionalGAN(input_dim=X_train.shape[1], noise_dim=noise, n_classes=2)
     global_gan.add_classes([0, 1])
 
     classes = [0, 1]

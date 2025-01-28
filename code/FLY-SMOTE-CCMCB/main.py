@@ -15,15 +15,15 @@ from keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
 from code.shared.FlySmote import FlySmote
-from code.shared.GAN import MultiClassBaseGAN
+from code.shared.GAN import ConditionalGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
 from code.shared.logger_config import configure_logger
 from code.shared.structs import ClientArgs, GANClientArgs
-from code.shared.train_client import train_client, train_gan_client, train_gan_client_all_data, \
-    train_gan_client_class_data
+from code.shared.train_client import train_client, train_gan_client
 
 logger = logging.getLogger()
+
 # TODO: find out why logging level is sqitched
 
 def run():
@@ -102,6 +102,7 @@ def run():
 
     # Create clients and batch their data
     clients = fly_smote.create_clients(X_train, Y_train, num_clients, initial='client', attribute_index=attribute_index)
+    clients_gan = {client_name: [client_data, None] for client_name, client_data in clients.items()}
 
     # Batch test set
     test_batched = tf.data.Dataset.from_tensor_slices((X_test, Y_test)).batch(len(Y_test))
@@ -123,50 +124,50 @@ def run():
 
     global_gan = None
     if args.ccmcb:
-        global_gan = MultiClassBaseGAN(input_dim=X_train.shape[1], noise_dim=noise, discriminator_layers=discriminator_layers, generator_layers=generator_layers)
-        global_gan.add_classes(classes)
+        global_gan = ConditionalGAN(input_dim=X_train.shape[1], noise_dim=noise, n_classes=2)
 
     start_time = time.time()
 
     # GAN-Loop
     if args.ccmcb:
         for round_num in tqdm(range(comms_rounds), desc=f"Communication Rounds GAN"):
-            global_gan_weights = global_gan.get_all_weights()
-            global_gan_count = {label: 0 for label in classes}
-            scaled_local_gan_weights = {label: [] for label in classes}
+            global_gan_weights = global_gan.get_generator_weights()
+            global_gan_count = 0
+            scaled_local_gan_weights = []
 
             with ProcessPoolExecutor(max_workers=args.workers) as executor:
                 # Parallelisiertes Training für Clients
                 client_args_list = [
                     GANClientArgs(client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes,
-                                  local_gan_epochs, noise, discriminator_layers, generator_layers)
-                    for client_name, client_data in clients.items()
+                                  local_gan_epochs, noise)
+                    for client_name, client_data in clients_gan.items()
                 ]
 
-                results = list(executor.map(train_gan_client_class_data, client_args_list))
+                results = list(executor.map(train_gan_client, client_args_list))
 
             # accumulate results
-            for scaled_weights, gan_count in results:
-                for label in classes:
-                    global_gan_count[label] += gan_count[label]
-                    scaled_local_gan_weights[label].extend(scaled_weights[label])
+            for client_name, scaled_weights, disc_weights, gan_count in results:
+                global_gan_count += gan_count
+                scaled_local_gan_weights.append(scaled_weights)
+                clients_gan[client_name][1] = disc_weights
 
             # aggregation of GAN-weights
-            average_gan_weights = {}
-            for label in classes:
-                scaled = list(map(lambda x: fly_smote.scale_model_weights(x, 1 / global_gan_count[label]),
-                                  scaled_local_gan_weights[label]))
-                average_gan_weights[label] = fly_smote.sum_scaled_weights(scaled)
+            scaled = list(map(lambda x: fly_smote.scale_model_weights(x, 1 / global_gan_count),
+                              scaled_local_gan_weights))
 
-            global_gan.set_all_weights(average_gan_weights)
+            average_gan_weights = [sum(weights) for weights in zip(*scaled)]
+            #average_gan_weights = fly_smote.sum_scaled_weights(scaled)
 
-            test_results = MultiClassBaseGAN.test_gan(global_gan, X_test, Y_test)
+            global_gan.set_generator_weights(average_gan_weights)
+
+            test_results = global_gan.test_gan(X_test, Y_test)
             logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
 
             if args.wandb_logging:
                 wandb.log({f"{label}_{key}": value for label, metrics in test_results.items() for key, value in metrics.items()}, step=round_num)
 
         # Federated learning loop
+
     for round_num in tqdm(range(comms_rounds), desc="Communication Rounds"):
 
         # Get global model weights

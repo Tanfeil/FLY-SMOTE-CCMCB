@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from code.shared.FlySmote import FlySmote
-from code.shared.GAN import MultiClassGAN
+from code.shared.GAN import ConditionalGAN
 
 
 @dataclass
@@ -23,7 +23,7 @@ class ClientArgs:
     metrics: list
     global_count: int
     g_value: Optional[float] = None
-    global_gan: Optional[MultiClassGAN] = None
+    global_gan: Optional[ConditionalGAN] = None
 
 @dataclass
 class ClientArgsWithGAN(ClientArgs):
