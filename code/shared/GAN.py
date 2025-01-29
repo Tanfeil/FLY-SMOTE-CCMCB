@@ -9,6 +9,9 @@ keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 import tensorflow as tf
 import numpy as np
+#import keras
+import tensorflow as tf
+import tf_keras as keras
 
 class MultiClassGAN:
     def __init__(self, input_dim, noise_dim=100):
@@ -76,7 +79,7 @@ class MultiClassGAN:
             g_loss = gan_model.train_on_batch(noise, valid_labels)
 
             if epoch % 10 == 0:
-                print(f"[Class {class_label}] Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
+                logger.info(f"Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, class_label, num_samples):
         noise = np.random.normal(0, 1, (num_samples, self.noise_dim))
