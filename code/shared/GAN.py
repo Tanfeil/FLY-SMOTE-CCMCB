@@ -5,7 +5,9 @@ logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 import numpy as np
-import keras
+#import keras
+import tensorflow as tf
+import tf_keras as keras
 
 
 class ConditionalGAN:
@@ -79,8 +81,8 @@ class ConditionalGAN:
 
                 real_samples = real_data[idx]
                 labels = ground_truth_labels[idx]
-                noise = np.random.normal(0, 1, (half_batch, self.noise_dim))
 
+                noise = np.random.normal(0, 1, (half_batch, self.noise_dim))
                 fake_samples = self.generator.predict([noise, labels], verbose=keras_verbose)
 
                 real_labels = np.ones((half_batch, 1))
@@ -98,9 +100,8 @@ class ConditionalGAN:
 
             g_loss = self.gan_model.train_on_batch([noise, random_labels], valid_labels)
 
-            print(logger.level)
             if epoch % 10 == 0:
-                print(f"Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
+                logger.info(f"Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, labels):
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
