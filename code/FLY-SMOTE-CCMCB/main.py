@@ -18,13 +18,12 @@ from code.shared.FlySmote import FlySmote
 from code.shared.GAN import MultiClassBaseGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
-from code.shared.logger_config import configure_logger
+from code.shared.logger_config import configure_logger, TqdmLogger
 from code.shared.structs import ClientArgs, GANClientArgs
 from code.shared.train_client import train_client, train_gan_client, train_gan_client_all_data, \
     train_gan_client_class_data, train_gan_client_real_data
 
 logger = logging.getLogger()
-# TODO: find out why logging level is sqitched
 
 def run():
     # Argument parser setup
@@ -57,10 +56,12 @@ def run():
     parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
     parser.add_argument("-wm", "--wandb_mode", type=str, default="offline", help="Mode of W&B logging.")
+    parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Enable verbose output")
 
     args = parser.parse_args()
 
-    configure_logger(verbose=False)
+    configure_logger(verbose=args.verbose)
+    tqdm_logger = TqdmLogger(logger)
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -130,12 +131,13 @@ def run():
 
     # GAN-Loop
     if args.ccmcb:
-        for round_num in tqdm(range(comms_rounds), desc=f"Communication Rounds GAN"):
+        logger.info("GAN Training")
+        for round_num in tqdm(range(comms_rounds), desc=f"Communication Rounds GAN", file=tqdm_logger):
             global_gan_weights = global_gan.get_all_weights()
             global_gan_count = {label: 0 for label in classes}
             scaled_local_gan_weights = {label: [] for label in classes}
 
-            with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            with ProcessPoolExecutor(max_workers=args.workers, initializer=configure_logger, initargs=(args.verbose,)) as executor:
                 # Parallelisiertes Training für Clients
                 client_args_list = [
                     GANClientArgs(client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes,
@@ -167,6 +169,7 @@ def run():
                 wandb.log({f"{label}_{key}": value for label, metrics in test_results.items() for key, value in metrics.items()}, step=round_num)
 
         # Federated learning loop
+    logger.info("FL Training")
     for round_num in tqdm(range(comms_rounds), desc="Communication Rounds"):
 
         # Get global model weights
@@ -179,7 +182,7 @@ def run():
         global_count = sum([len(client) for client in clients.values()])
 
         # Parallel client training
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        with ProcessPoolExecutor(max_workers=args.workers, initializer=configure_logger, initargs=(args.verbose,)) as executor:
             args_list = [
                 ClientArgs(
                     client_name, client_data, global_weights, X_train, batch_size, early_stopping,
