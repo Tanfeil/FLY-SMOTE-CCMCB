@@ -106,6 +106,11 @@ class ConditionalGAN:
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
         return self.generator.predict([noise, labels])
 
+    def generate_label_samples(self, label, num_samples):
+        labels = np.ones((num_samples, label))
+        noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
+        return self.generator.predict([noise, labels])
+
     def get_generator_weights(self):
         """
         Extract the weights of the generator.
