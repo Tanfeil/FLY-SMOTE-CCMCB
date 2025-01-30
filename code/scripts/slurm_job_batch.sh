@@ -10,6 +10,7 @@
 #SBATCH --mail-type=ALL
 
 module load Miniforge3
+#conda create -n myenv python=3.11.5 numpy=1.26.4 pandas=2.2.3 requests scikit-learn tensorflow keras=3.5.0 tqdm wandb -y
 conda activate myenv
 cd $BIGWORK/FLY-SMOTE-CCMCB_ctgan
 
