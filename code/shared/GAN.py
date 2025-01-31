@@ -5,9 +5,7 @@ logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 import numpy as np
-#import keras
-import tf_keras as keras
-
+import keras
 
 class ConditionalGAN:
     def __init__(self, input_dim, noise_dim=100, n_classes=2):
@@ -69,8 +67,9 @@ class ConditionalGAN:
         return model
 
     def train(self, real_data, ground_truth_labels, epochs=50, batch_size=16, n_critic=2):
+        ground_truth_labels = self.ensure_one_hot(ground_truth_labels, num_classes=self.n_classes)
+
         half_batch = batch_size // 2
-        ground_truth_labels = keras.utils.to_categorical(ground_truth_labels, num_classes=self.n_classes)
         for epoch in range(epochs):
             for _ in range(n_critic):
                 # Trainiere den Diskriminator
@@ -103,11 +102,15 @@ class ConditionalGAN:
                 logger.info(f"Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, labels):
+        labels = self.ensure_one_hot(labels, num_classes=self.n_classes)
+
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
         return self.generator.predict([noise, labels])
 
     def generate_label_samples(self, label, num_samples):
         labels = np.ones((num_samples, label))
+
+        labels = self.ensure_one_hot(labels, num_classes=self.n_classes)
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
         return self.generator.predict([noise, labels])
 
@@ -188,7 +191,7 @@ class ConditionalGAN:
         """
         results = {}
 
-        labels = keras.utils.to_categorical(real_labels, num_classes=self.n_classes)
+        labels = self.ensure_one_hot(real_labels, num_classes=self.n_classes)
 
         generated_samples = self.generate_samples(labels)
         distance = real_data - generated_samples
@@ -203,4 +206,25 @@ class ConditionalGAN:
             results[class_label] = {"mse": mse}
 
         return results
+
+    @staticmethod
+    def ensure_one_hot(labels, num_classes):
+        """
+        Ensures the labels are in one-hot encoded format.
+
+        Args:
+            labels (np.ndarray): Array with labels, either as integer classes or one-hot encoded.
+            num_classes (int): The number of classes for one-hot encoding.
+
+        Returns:
+            np.ndarray: Labels in one-hot encoded format.
+        """
+        labels = np.array(labels)
+
+        # Check if labels are already in one-hot format
+        if labels.ndim == 2 and labels.shape[1] == num_classes and np.array_equal(labels, labels.astype(bool)):
+            return labels  # Already in correct format
+
+        # Otherwise, convert to one-hot format
+        return keras.utils.to_categorical(labels, num_classes=num_classes)
 
