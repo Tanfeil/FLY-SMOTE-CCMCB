@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import tensorflow as tf
-import numpy as np
-
 logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
-import tensorflow as tf
 import numpy as np
-#import keras
-import tensorflow as tf
-import tf_keras as keras
+import keras
+
 
 class MultiClassGAN:
     def __init__(self, input_dim, noise_dim=100):
@@ -35,8 +30,8 @@ class MultiClassGAN:
 
     def _build_gan(self, generator, discriminator):
         discriminator.trainable = False
-        model = tf.keras.Sequential([generator, discriminator])
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
+        model = keras.Sequential([generator, discriminator])
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
 
     def train(self, class_label, real_data, epochs=50, batch_size=16, n_critic=2, freeze_layers=False):
@@ -190,6 +185,7 @@ class MultiClassGAN:
 
         return results
 
+
 class MultiClassBaseGAN(MultiClassGAN):
     def __init__(self, input_dim, noise_dim=100, generator_layers=None, discriminator_layers=None):
         super().__init__(input_dim, noise_dim)
@@ -201,26 +197,26 @@ class MultiClassBaseGAN(MultiClassGAN):
         hidden_layer = []
         for size in self.generator_layers:
             hidden_layer.extend([
-                tf.keras.layers.Dense(size, activation='relu'),
-                tf.keras.layers.BatchNormalization()
+                keras.layers.Dense(size, activation='relu'),
+                keras.layers.BatchNormalization()
             ])
 
-        model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.noise_dim,))]
+        model = keras.Sequential([keras.layers.Input(shape=(self.noise_dim,))]
                                     + hidden_layer
-                                    + [tf.keras.layers.Dense(self.input_dim, activation='tanh')])
+                                    + [keras.layers.Dense(self.input_dim, activation='tanh')])
         return model
 
     def _build_discriminator(self):
         hidden_layer = []
         for size in self.discriminator_layers:
             hidden_layer.extend([
-                tf.keras.layers.Dense(size, activation='relu'),
-                tf.keras.layers.Dropout(0.3)
+                keras.layers.Dense(size, activation='relu'),
+                keras.layers.Dropout(0.3)
             ])
 
-        model = tf.keras.Sequential([tf.keras.layers.Input(shape=(self.input_dim,))]
+        model = keras.Sequential([keras.layers.Input(shape=(self.input_dim,))]
                                     + hidden_layer
-                                    + [tf.keras.layers.Dense(1, activation='sigmoid')])
+                                    + [keras.layers.Dense(1, activation='sigmoid')])
 
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5), loss='binary_crossentropy')
         return model
