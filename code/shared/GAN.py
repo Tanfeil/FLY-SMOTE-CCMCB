@@ -6,7 +6,6 @@ keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 import numpy as np
 #import keras
-import tensorflow as tf
 import tf_keras as keras
 
 
