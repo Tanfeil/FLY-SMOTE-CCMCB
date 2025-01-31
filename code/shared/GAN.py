@@ -5,7 +5,8 @@ logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 import numpy as np
-import keras
+#import keras
+import tf_keras as keras
 
 class ConditionalGAN:
     def __init__(self, input_dim, noise_dim=100, n_classes=2):

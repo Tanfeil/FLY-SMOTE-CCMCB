@@ -12,7 +12,9 @@ import warnings
 
 import numpy as np
 import tensorflow as tf
-import keras
+#import keras
+import tf_keras as keras
+
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 

@@ -9,8 +9,8 @@ Description:
 This module defines a simple Multi-Layer Perceptron (MLP) class for binary classification tasks.
 """
 
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Input
+from tf_keras.models import Sequential
+from tf_keras.layers import Dense, Dropout, Input
 
 
 class SimpleMLP:

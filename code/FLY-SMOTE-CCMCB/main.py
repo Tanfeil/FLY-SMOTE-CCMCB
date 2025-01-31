@@ -10,8 +10,8 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import tensorflow as tf
 import wandb
-from keras.callbacks import EarlyStopping
-from keras.optimizers.schedules import ExponentialDecay
+from tf_keras.callbacks import EarlyStopping
+from tf_keras.optimizers.schedules import ExponentialDecay
 from tqdm import tqdm
 
 from code.shared.FlySmote import FlySmote

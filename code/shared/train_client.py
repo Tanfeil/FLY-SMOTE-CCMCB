@@ -2,9 +2,9 @@ import logging
 import math
 from dataclasses import asdict
 
-import keras.backend as k
+import tf_keras.backend as k
 import numpy as np
-from keras.optimizers import SGD
+from tf_keras.optimizers import SGD
 from sklearn.model_selection import train_test_split
 
 from code.shared.GAN import ConditionalGAN
