@@ -93,7 +93,7 @@ def run():
 
     # W&B logging setup (only if enabled)
     if args.wandb_logging:
-        wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
+        wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args), mode=args.wandb_mode, allow_val_change=True)
 
     # Load data
     X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
