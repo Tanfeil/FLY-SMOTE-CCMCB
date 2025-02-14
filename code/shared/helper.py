@@ -19,6 +19,7 @@ def check_imbalance(y_data):
 
     if num_zeros < num_ones:
         minority_label = 0
+        #TODO: should be never division by zero? except no zeros neither ones?
         threshold = num_zeros / (num_ones + 1e-13)
     else:
         minority_label = 1
