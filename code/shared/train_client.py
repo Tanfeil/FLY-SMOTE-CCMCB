@@ -91,4 +91,5 @@ def train_gan_client(client_args: GANClientArgs):
     scaled_weights = fly_smote.scale_model_weights(local_gan.get_generator_weights(), local_len)
     scaled_local_gan_weights = scaled_weights
 
+    k.clear_session()
     return client_name, scaled_local_gan_weights, local_gan.get_discriminator_weights(), local_len
