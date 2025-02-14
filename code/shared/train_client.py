@@ -81,17 +81,14 @@ def train_gan_client(client_args: GANClientArgs):
     x_client = np.array(x_client)
     y_client = np.array(y_client)
 
-    minority_label, _ = check_imbalance(y_client)
-
-
     local_data = x_client
 
     # Train the GAN for both classes with the same weights from the global model
     local_gan.train(x_client, y_client, epochs=local_epochs, batch_size=batch_size)
-    global_gan_count = len(local_data)
+    local_len = len(local_data)
 
     # Scaling the model weights for the current class
-    scaled_weights = fly_smote.scale_model_weights(local_gan.get_generator_weights(), len(local_data))
+    scaled_weights = fly_smote.scale_model_weights(local_gan.get_generator_weights(), local_len)
     scaled_local_gan_weights = scaled_weights
 
-    return client_name, scaled_local_gan_weights, local_gan.get_discriminator_weights(), global_gan_count
+    return client_name, scaled_local_gan_weights, local_gan.get_discriminator_weights(), local_len
