@@ -21,8 +21,12 @@ def check_imbalance(y_data):
         minority_label = 0
         #TODO: should be never division by zero? except no zeros neither ones?
         threshold = num_zeros / (num_ones + 1e-13)
+        len_minor = num_zeros
+        len_major = num_ones
     else:
         minority_label = 1
         threshold = num_ones / (num_zeros + 1e-13)
+        len_minor = num_ones
+        len_major = num_zeros
 
-    return minority_label, threshold
+    return minority_label, threshold, len_minor, len_major
