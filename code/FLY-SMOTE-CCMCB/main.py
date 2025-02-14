@@ -33,7 +33,7 @@ def run():
     parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
     parser.add_argument("--ccmcb", action='store_true', default=False, help="Run with GAN or not")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
-    parser.add_argument("-g", "--g_value", type=float, default=3, help="Ratio of samples from GAN.")
+    parser.add_argument("-g", "--g_value", type=float, default=0.5, help="Ratio of samples from GAN.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
     parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
     parser.add_argument("-nc", "--num_clients", type=int, default=3, help="Number of clients for federated learning.")

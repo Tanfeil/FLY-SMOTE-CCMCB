@@ -33,14 +33,14 @@ def train_client(client_args: ClientArgs):
     local_count = len(y_client)
 
     # Apply FlySmote if needed
-    minority_label, imbalance_threshold = check_imbalance(y_client)
+    minority_label, imbalance_threshold, len_minor, len_major = check_imbalance(y_client)
 
     if imbalance_threshold <= threshold:
         # Create Synth data
         # Generate Synthetic samples with GAN for kSmote
         # TODO: num_samples makes sense like that ?
         if global_gan is not None:
-            samples = global_gan.generate_label_samples(minority_label, num_samples=math.floor(len(y_client) / imbalance_threshold * g_value))
+            samples = global_gan.generate_label_samples(minority_label, num_samples=math.floor(len_minor * g_value))
 
             x_client.extend(samples)
             y_client.extend(np.full(len(samples), minority_label))
