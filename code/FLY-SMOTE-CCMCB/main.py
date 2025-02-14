@@ -166,7 +166,7 @@ def run():
             logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
 
             if args.wandb_logging:
-                wandb.log({f"{label}_{key}": value for label, metrics in test_results.items() for key, value in metrics.items()}, step=round_num)
+                wandb.log({f"{label}_{key}": value for label, metrics in test_results.items() for key, value in metrics.items()})
 
         # Federated learning loop
     logger.info("FL Training")
@@ -219,7 +219,7 @@ def run():
                     'specificity': specificity,
                     'balanced_accuracy': balanced_accuracy,
                     'g_mean': g_mean
-                }, step=round_num)
+                })
 
     elapsed_time = time.time() - start_time
     logger.info(f"Training completed in {elapsed_time:.2f} seconds")
