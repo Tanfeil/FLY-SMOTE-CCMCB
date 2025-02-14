@@ -40,7 +40,7 @@ def train_client(client_args: ClientArgs):
         # Generate Synthetic samples with GAN for kSmote
         # TODO: num_samples makes sense like that ?
         if global_gan is not None:
-            samples = global_gan.generate_label_samples(minority_label, num_samples=math.floor(len(y_client) * imbalance_threshold / g_value))
+            samples = global_gan.generate_label_samples(minority_label, num_samples=math.floor(len(y_client) / imbalance_threshold * g_value))
 
             x_client.extend(samples)
             y_client.extend(np.full(len(samples), minority_label))
