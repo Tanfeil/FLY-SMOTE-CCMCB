@@ -6,7 +6,6 @@ def read_data(file_name, directory):
     data_loader = ReadData(file_name)
     return data_loader.load_data(directory)
 
-
 def check_imbalance(y_data):
     assert len(y_data) > 0, "data should not be empty for balance check"
 
