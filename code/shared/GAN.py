@@ -203,7 +203,7 @@ class ConditionalGAN:
             mse = np.mean((class_distances) ** 2)
 
             # Speichere das Ergebnis für die aktuelle Klasse
-            results[class_label] = {"mse": mse}
+            results[f"class{class_label}_mse"] = mse
 
         return results
 

@@ -156,32 +156,6 @@ def sum_scaled_weights(scaled_weight_list):
         avg_grad.append(layer_mean)  # Append the result to the list
     return avg_grad
 
-
-def test_model(X_test, Y_test, model, comm_round):
-    """
-    Tests the model on the given test data and computes performance metrics.
-
-    Args:
-        X_test: The feature data for testing.
-        Y_test: The labels for testing.
-        model: The model to be tested.
-        comm_round: The communication round number.
-
-    Returns:
-        The accuracy, loss, and confusion matrix.
-    """
-    cce = keras.losses.BinaryCrossentropy()  # Define binary cross-entropy loss
-    logits = model.predict(X_test)  # Get predictions from the model
-    predictions = np.around(logits)  # Round the predictions
-    predictions = np.nan_to_num(predictions)  # Handle any NaN values
-    Y_test = np.nan_to_num(Y_test)  # Handle NaN values in the ground truth labels
-    conf = confusion_matrix(Y_test, predictions)  # Compute the confusion matrix
-    loss = cce(Y_test, predictions)  # Calculate loss
-    acc = accuracy_score(predictions, Y_test)  # Calculate accuracy
-    print(f'comm_round: {comm_round} | global_acc: {acc} | global_loss: {loss}')  # Print results
-    return acc, loss, conf
-
-
 def k_nearest_neighbors(data, predict, k):
     """
     Implements the k-nearest neighbors algorithm.
