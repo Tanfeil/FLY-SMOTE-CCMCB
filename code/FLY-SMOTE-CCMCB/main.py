@@ -66,6 +66,7 @@ def run():
 
             logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
             if config.wandb_logging:
+                test_results["round"] = round_num + 1
                 wandb.log(test_results)
 
         # Federated learning loop
@@ -95,6 +96,7 @@ def run():
         logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
         # Log metrics to W&B if enabled
         if config.wandb_logging:
+            test_results["round"] = round_num + 1
             wandb.log(test_results)
 
     elapsed_time = time.time() - start_time
