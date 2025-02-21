@@ -32,24 +32,7 @@ def create_clients(data_list, label_list, num_clients, initial='client', attribu
     client_names = ['{}_{}'.format(initial, i + 1) for i in range(num_clients)]
     data_list = list(zip(data_list, label_list))
 
-    # Split attributes uniquely to the clients
-    # Works only if |clients| = |domain(data[attribute_index])|
-    # TODO: implement check for this and then comment out
-    # if attribute_index is not None:
-    #     # Map each unique attribute value to its respective data points
-    #     attribute_data_map = {}
-    #     for data, label in data_list:
-    #         attribute_value = data[attribute_index]  # Get the attribute value using the index
-    #         if attribute_value not in attribute_data_map:
-    #             attribute_data_map[attribute_value] = []
-    #         attribute_data_map[attribute_value].append((data, label))
-    #
-    #     # Sort attributes and distribute them among clients
-    #     sorted_attributes = sorted(attribute_data_map.keys())
-    #     shards = [[] for _ in range(num_clients)]
-    #     for idx, attribute in enumerate(sorted_attributes):
-    #         print(idx)
-    #         shards[idx % num_clients].extend(attribute_data_map[attribute])
+    # Split attributes to the clients
     if attribute_index is not None:
         data_list = sorted(data_list, key=lambda x: x[0][attribute_index], reverse=True)
     else:
