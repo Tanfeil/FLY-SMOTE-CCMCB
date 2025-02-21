@@ -40,23 +40,29 @@ def run():
     # Create clients and batch their data
     clients = FlySmote.create_clients(x_train, y_train, config.num_clients, initial='client',
                                       attribute_index=config.attribute_index)
-    gan_clients = {client_name: [client_data, None] for client_name, client_data in clients.items()}
-
-    # Initialize global model
-    global_model = SimpleMLP.build(x_train, n=1)
-
-    global_gan = None
-    if config.ccmcb:
-        global_gan = ConditionalGAN(input_dim=x_train.shape[1], noise_dim=config.noise_dim, n_classes=len(config.classes))
 
     start_time = time.time()
-    # GAN-Loop
+
+    global_gan = _gan_loop(clients, config, tqdm_logger, x_test, y_test)
+    _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test)
+
+    elapsed_time = time.time() - start_time
+
+    logger.info(f"Training completed in {elapsed_time:.2f} seconds")
+
+
+def _gan_loop(clients, config, tqdm_logger, x_test, y_test):
+    gan_clients = {client_name: [client_data, None] for client_name, client_data in clients.items()}
+
     if config.ccmcb:
+        global_gan = ConditionalGAN(input_dim=x_test.shape[1], noise_dim=config.noise_dim,
+                                    n_classes=len(config.classes))
+
         logger.info("GAN Training")
         for round_num in tqdm(range(config.comms_rounds), desc=f"Communication Rounds GAN", file=tqdm_logger):
 
             global_gan_weights = global_gan.get_generator_weights()
-            average_gan_weights, gan_clients = train_gan_clients_and_average(gan_clients, global_gan_weights, x_train,
+            average_gan_weights, gan_clients = train_gan_clients_and_average(gan_clients, global_gan_weights,
                                                                              config.get_gan_clients_training_config())
             global_gan.set_generator_weights(average_gan_weights)
 
@@ -67,8 +73,16 @@ def run():
                 test_results["round"] = round_num + 1
                 wandb.log(test_results)
 
-        # Federated learning loop
+        return global_gan
+    return None
+
+
+def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
+    # Federated learning loop
     logger.info("FL Training")
+
+    # Initialize global model
+    global_model = SimpleMLP.build(x_test, n=1)
 
     # Create an ExponentialDecay learning rate scheduler
     lr_schedule = ExponentialDecay(
@@ -83,7 +97,7 @@ def run():
 
         # Get global model weights
         global_weights = global_model.get_weights()
-        average_weights = train_clients_and_average(clients, global_weights, x_train, early_stopping, lr_schedule,
+        average_weights = train_clients_and_average(clients, global_weights, early_stopping, lr_schedule,
                                                     global_gan.get_generator_weights(),
                                                     config.get_clients_training_config())
         global_model.set_weights(average_weights)
@@ -96,9 +110,6 @@ def run():
         if config.wandb_logging:
             test_results["round"] = round_num + 1
             wandb.log(test_results)
-
-    elapsed_time = time.time() - start_time
-    logger.info(f"Training completed in {elapsed_time:.2f} seconds")
 
 
 if __name__ == '__main__':

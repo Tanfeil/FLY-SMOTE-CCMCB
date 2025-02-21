@@ -18,28 +18,27 @@ keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 
 def train_client(client_args: ClientArgs):
-    local_model = _initialize_local_NN(client_args.x_train, client_args.global_weights, client_args.loss_function,
+    # Extract client data for imbalance check
+    x_client, y_client = map(np.array, zip(*client_args.client_data))
+
+    local_model = _initialize_local_NN(x_client, client_args.global_weights, client_args.loss_function,
                                        client_args.lr_schedule, client_args.metrics)
 
-    global_gan = ConditionalGAN(input_dim=client_args.x_train.shape[1], noise_dim=client_args.noise_dim)
+    global_gan = ConditionalGAN(input_dim=x_client.shape[1], noise_dim=client_args.noise_dim)
     global_gan.set_generator_weights(client_args.global_gan_weights)
-
-    # Extract client data for imbalance check
-    x_client, y_client = zip(*client_args.client_data)
-    x_client, y_client = list(x_client), list(y_client)
 
     num_local_samples = len(y_client)
 
     # Apply FlySmote if needed
-    x_client, y_client = _handle_imbalance(x_client, y_client, global_gan, client_args.k_value, client_args.r_value,
+    x_client, y_client = _handle_imbalance(list(x_client), list(y_client), global_gan, client_args.k_value, client_args.r_value,
                                            client_args.g_value, client_args.threshold)
 
     x_client = np.array(x_client)
     y_client = np.array(y_client)
 
-    X_train, X_val, Y_train, Y_val = train_test_split(x_client, y_client, test_size=0.1, shuffle=True)
-    local_data = FlySmote.batch_data(X_train, Y_train, batch_size=client_args.batch_size)
-    local_model.fit(local_data, validation_data=(X_val, Y_val), callbacks=[client_args.early_stopping],
+    x_train, x_val, y_train, y_val = train_test_split(x_client, y_client, test_size=0.1, shuffle=True)
+    local_data = FlySmote.batch_data(x_train, y_train, batch_size=client_args.batch_size)
+    local_model.fit(local_data, validation_data=(x_val, y_val), callbacks=[client_args.early_stopping],
                     epochs=client_args.local_epochs,
                     verbose=keras_verbose)
 
@@ -50,11 +49,11 @@ def train_client(client_args: ClientArgs):
 def train_gan_client(client_args: GANClientArgs):
     client_data, disc_weights = client_args.client_data
 
-    local_gan = _initialize_local_GAN(client_args.x_train, client_args.global_gan_weights, disc_weights,
-                                      client_args.noise_dim)
-
     # unpack to data, label as np.array
     x_client, y_client = map(np.array, zip(*client_data))
+
+    local_gan = _initialize_local_GAN(x_client, client_args.global_gan_weights, disc_weights,
+                                      client_args.noise_dim)
 
     logger.debug(f'{client_args.client_name}: Create synthetic data for GAN')
 

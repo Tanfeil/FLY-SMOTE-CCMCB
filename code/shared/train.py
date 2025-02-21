@@ -6,7 +6,7 @@ from code.shared.structs import GANClientArgs, ClientArgs
 from code.shared.train_client import train_gan_client, train_client
 
 
-def train_gan_clients_and_average(gan_clients, global_gan_weights, x_train, config):
+def train_gan_clients_and_average(gan_clients, global_gan_weights, config):
     num_global_samples = 0
     local_gan_weights_per_client = []
     num_samples_per_client = []
@@ -15,7 +15,7 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, x_train, conf
                              initargs=(config["verbose"],)) as executor:
         # Parallelisiertes Training für Clients
         client_args_list = [
-            GANClientArgs(client_name, client_data, global_gan_weights, x_train, config["batch_size"],
+            GANClientArgs(client_name, client_data, global_gan_weights, config["batch_size"],
                           config["classes"],
                           config["epochs_gan"], config["noise_dim"])
             for client_name, client_data in gan_clients.items()
@@ -38,7 +38,7 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, x_train, conf
     return average_gan_weights, gan_clients
 
 
-def train_clients_and_average(clients, global_weights, x_train, early_stopping, lr_schedule, global_gan_weights,
+def train_clients_and_average(clients, global_weights, early_stopping, lr_schedule, global_gan_weights,
                               config):
     # Calculate global data count for scaling
     # Calculate before so, the original size sets the impact for the global model.
@@ -52,7 +52,7 @@ def train_clients_and_average(clients, global_weights, x_train, early_stopping, 
                              initargs=(config["verbose"],)) as executor:
         args_list = [
             ClientArgs(
-                client_name, client_data, global_weights, x_train, config["batch_size"], early_stopping,
+                client_name, client_data, global_weights, config["batch_size"], early_stopping,
                 config["threshold"], config["k_value"], config["r_value"], config["epochs"],
                 config["loss_function"], lr_schedule, config["metrics"], num_global_samples, config["g_value"],
                 global_gan_weights, config["noise_dim"]
