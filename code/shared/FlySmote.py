@@ -155,6 +155,10 @@ def sum_scaled_weights(scaled_weight_list):
         avg_grad.append(layer_mean)  # Append the result to the list
     return avg_grad
 
+def scale_and_sum_weights(weights, scalars):
+    scaled_weights = map(lambda weight, scalar: scale_model_weights(weight, scalar), weights, scalars)
+    return [sum(weights) for weights in zip(*scaled_weights)]
+
 def k_nearest_neighbors(data, predict, k):
     """
     Implements the k-nearest neighbors algorithm.

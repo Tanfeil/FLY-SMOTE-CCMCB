@@ -66,7 +66,7 @@ def train_client(client_args: ClientArgs):
     return scaled_weights
 
 def train_gan_client(client_args: GANClientArgs):
-    client_name, client_data, global_gan_weights, X_train, batch_size, classes, local_epochs, noise_dim, _, _ = asdict(client_args).values()
+    client_name, client_data, global_gan_weights, X_train, batch_size, classes, epochs, noise_dim, _, _ = asdict(client_args).values()
 
     local_gan = ConditionalGAN(input_dim=X_train.shape[1], noise_dim=noise_dim)
     local_gan.set_generator_weights(global_gan_weights)
@@ -84,15 +84,41 @@ def train_gan_client(client_args: GANClientArgs):
     x_client = np.array(x_client)
     y_client = np.array(y_client)
 
-    local_data = x_client
+    logger.debug(f'{client_name}: Create synthetic data for GAN')
+
+    x_syn, y_syn = _create_synth_with_k_smote(x_client, y_client, classes, k=10)
+    x_syn, y_syn = _shuffle_data(x_syn, y_syn)
 
     # Train the GAN for both classes with the same weights from the global model
-    local_gan.train(x_client, y_client, epochs=local_epochs, batch_size=batch_size)
-    num_local_samples = len(local_data)
-
-    # Scaling the model weights for the current class
-    scaled_weights = FlySmote.scale_model_weights(local_gan.get_generator_weights(), num_local_samples)
-    scaled_local_gan_weights = scaled_weights
+    local_gan.train(x_syn, y_syn, epochs=epochs, batch_size=batch_size)
+    num_local_samples = len(y_syn)
 
     k.clear_session()
-    return client_name, scaled_local_gan_weights, local_gan.get_discriminator_weights(), num_local_samples
+    return client_name, local_gan.get_generator_weights(), local_gan.get_discriminator_weights(), num_local_samples
+
+def _create_synth_with_k_smote(x_client, y_client, classes, k):
+    minority_label, _, len_minor, len_major = check_imbalance(y_client)
+
+    x_syn = []
+    y_syn = []
+
+    for label in classes:
+        d_major_x, d_minor_x = FlySmote.splitYtrain(x_client, y_client, label)
+
+        r_direction = 1 if label == minority_label else -1
+
+        #samples from k neighbors and creates len(class) samples
+        x_syn_label = FlySmote.kSMOTE(d_major_x, d_minor_x, k, 1 * r_direction)
+        x_syn_label = np.vstack([np.array(points) for points in x_syn_label])
+
+        x_syn.extend(x_syn_label)
+        y_syn.extend(np.full(len(x_syn_label), minority_label))
+
+    return np.array(x_syn), np.array(y_syn)
+
+def _shuffle_data(x, y):
+    shuffled_indices = np.random.permutation(len(x))
+    x = x[shuffled_indices]
+    y = y[shuffled_indices]
+
+    return x, y

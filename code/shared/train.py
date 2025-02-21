@@ -8,12 +8,15 @@ from code.shared.train_client import train_gan_client, train_client
 
 def train_gan_clients_and_average(gan_clients, global_gan_weights, x_train, config):
     num_global_samples = 0
-    scaled_local_gan_weights = []
+    local_gan_weights = []
+    num_samples_per_client = []
 
-    with ProcessPoolExecutor(max_workers=config["workers"], initializer=configure_logger, initargs=(config["verbose"],)) as executor:
+    with ProcessPoolExecutor(max_workers=config["workers"], initializer=configure_logger,
+                             initargs=(config["verbose"],)) as executor:
         # Parallelisiertes Training für Clients
         client_args_list = [
-            GANClientArgs(client_name, client_data, global_gan_weights, x_train, config["batch_size"], config["classes"],
+            GANClientArgs(client_name, client_data, global_gan_weights, x_train, config["batch_size"],
+                          config["classes"],
                           config["epochs_gan"], config["noise_dim"])
             for client_name, client_data in gan_clients.items()
         ]
@@ -21,17 +24,16 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, x_train, conf
         results = list(executor.map(train_gan_client, client_args_list))
 
     # accumulate results
-    for client_name, scaled_weights, disc_weights, num_local_samples in results:
-        num_global_samples += num_local_samples
-        scaled_local_gan_weights.append(scaled_weights)
+    for client_name, gen_weights, disc_weights, num_samples in results:
+        num_global_samples += num_samples
+        num_samples_per_client.append(num_samples)
+        local_gan_weights.append(gen_weights)
         gan_clients[client_name][1] = disc_weights
 
-    # aggregation of GAN-weights
-    scaled = list(map(lambda x: FlySmote.scale_model_weights(x, 1 / num_global_samples),
-                      scaled_local_gan_weights))
-
-    average_gan_weights = [sum(weights) for weights in zip(*scaled)]
-    # average_gan_weights = FlySmote.sum_scaled_weights(scaled)
+    scalar_per_client=[num_samples / num_global_samples for num_samples in
+                                                                  num_samples_per_client]
+    average_gan_weights = FlySmote.scale_and_sum_weights(local_gan_weights,
+                                                         scalars=scalar_per_client)
 
     return average_gan_weights, gan_clients
 
@@ -41,8 +43,9 @@ def train_clients_and_average(clients, global_weights, x_train, early_stopping, 
     # Calculate global data count for scaling
     # Calculate before so, the original size sets the impact for the global model.
     # So the synthetic created data does not higher the impact
-    # TODO: does it make sense like this ?
     num_global_samples = sum([len(client) for client in clients.values()])
+    local_weights = []
+    num_samples_per_client = []
 
     # Parallel client training
     with ProcessPoolExecutor(max_workers=config["workers"], initializer=configure_logger,
@@ -57,9 +60,15 @@ def train_clients_and_average(clients, global_weights, x_train, early_stopping, 
             for client_name, client_data in clients.items()
         ]
 
-        scaled_local_weights = list(executor.map(train_client, args_list))
+        results = list(executor.map(train_client, args_list))
 
-    # Aggregate scaled weights and update global model
-    average_weights = FlySmote.sum_scaled_weights(scaled_local_weights)
+    for client_name, local_weights, num_samples in results:
+        num_samples_per_client.append(num_samples)
+        local_weights.append(local_weights)
+
+    scalar_per_client = [num_samples / num_global_samples for num_samples in
+                                                              num_samples_per_client]
+    average_weights = FlySmote.scale_and_sum_weights(local_weights,
+                                                     scalars=scalar_per_client)
 
     return average_weights
