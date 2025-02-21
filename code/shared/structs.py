@@ -6,7 +6,7 @@ class ClientArgs:
     client_name: str
     client_data: any
     global_weights: list
-    X_train: any
+    x_train: any
     batch_size: int
     early_stopping: bool
     threshold: float
@@ -32,10 +32,10 @@ class GANClientArgs:
     client_name: str
     client_data: any
     global_gan_weights: list
-    X_train: any
+    x_train: any
     batch_size: int
     classes: list
-    local_epochs: int
+    epochs: int
     noise_dim: Optional[int] = 100
     discriminator_layers: Optional[list] = None
     generator_layers: Optional[list] = None
