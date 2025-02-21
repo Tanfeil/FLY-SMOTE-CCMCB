@@ -45,11 +45,9 @@ def run():
     # Initialize global model
     global_model = SimpleMLP.build(x_train, n=1)
 
-    classes = [0, 1]
-
     global_gan = None
     if config.ccmcb:
-        global_gan = ConditionalGAN(input_dim=x_train.shape[1], noise_dim=config.noise_dim, n_classes=2)
+        global_gan = ConditionalGAN(input_dim=x_train.shape[1], noise_dim=config.noise_dim, n_classes=len(config.classes))
 
     start_time = time.time()
     # GAN-Loop
