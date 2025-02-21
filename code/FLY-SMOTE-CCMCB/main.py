@@ -1,232 +1,180 @@
 # -*- coding: utf-8 -*-
-import argparse
-import math
-import random
+import logging
 import time
-from concurrent.futures import ProcessPoolExecutor
 
-import numpy as np
-import tensorflow as tf
 import wandb
 from keras.callbacks import EarlyStopping
 from keras.optimizers.schedules import ExponentialDecay
+from sklearn.model_selection import train_test_split, KFold
 from tqdm import tqdm
 
-from code.shared.FlySmote import FlySmote
-from code.shared.GAN import MultiClassGAN
+from code.shared import FlySmote
+from code.shared import NNModel
+from code.shared.GAN import ConditionalGAN
 from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
-from code.shared.structs import ClientArgs, GANClientArgs
-from code.shared.train_client import train_client, train_gan_client
+from code.shared.logger_config import configure_logger, TqdmLogger
+from code.shared.train import train_gan_clients_and_average, train_clients_and_average
+from .utils import parse_arguments, setup_seed
 
+logger = logging.getLogger()
 
 def run():
     # Argument parser setup
-    parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
-    parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
-    parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
-    parser.add_argument("--ccmcb", type=bool, default=False, help="Run with GAN or not")
-    parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples from the minority class.")
-    parser.add_argument("-g", "--g_value", type=float, default=3, help="Ratio of samples from GAN.")
-    parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
-    parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
-    parser.add_argument("-nc", "--num_clients", type=int, default=3, help="Number of clients for federated learning.")
-    parser.add_argument("-lr", "--learning_rate", type=float, default=0.01, help="Initial learning rate.")
-    parser.add_argument("-cr", "--comms_rounds", type=int, default=30, help="Number of communication rounds.")
-    parser.add_argument("-e", "--epochs", type=int, default=3, help="Number of local epochs.")
-    parser.add_argument("-eg", "--epochs_gan", type=int, default=50, help="Number of local gan epochs.")
-    parser.add_argument("-lf", "--loss_function", type=str, default="binary_crossentropy", help="Loss function to use.")
-    parser.add_argument("-b", "--batch_size", type=int, default=16, help="Batch size for training.")
-    parser.add_argument("-m", "--metrics", nargs='+', default=["accuracy"],
-                        help="List of metrics to evaluate the model.")
-    parser.add_argument("-wr", "--workers",type=int, default=1, help="Number of workers for training. 1 for non parallel run")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
-    parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
-    parser.add_argument("-w", "--wandb_logging", type=bool, default=False, help="Enable W&B logging.")
-    parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
-    parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")
-    parser.add_argument("-wm", "--wandb_mode", type=str, default="offline", help="Mode of W&B logging.")
+    config = parse_arguments()
 
-    args = parser.parse_args()
+    # Logging setup
+    configure_logger(verbose=config.verbose)
+    tqdm_logger = TqdmLogger(logger)
 
-    if args.seed is not None:
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        tf.random.set_seed(args.seed)
-        print(f"Random seed set to: {args.seed}")
-
-    # Assign parameters
-    dataset_name = args.dataset_name
-    filepath = args.filepath
-    k_value = args.k_value
-    r_value = args.r_value
-    g_value = args.g_value
-    threshold = args.threshold
-    num_clients = args.num_clients
-    learning_rate = args.learning_rate
-    comms_rounds = args.comms_rounds
-    local_epochs = args.epochs
-    local_gan_epochs = args.epochs_gan
-    loss_function = args.loss_function
-    batch_size = args.batch_size
-    attribute_index = args.attribute_index
-    metrics = args.metrics  # Default metrics
-
-    # W&B logging setup (only if enabled)
-    if args.wandb_logging:
-        wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
+    # seed setup
+    setup_seed(config.seed)
 
     # Load data
-    X_train, Y_train, X_test, Y_test = read_data(dataset_name, filepath)
+    x_train, y_train, x_test, y_test = read_data(config.dataset_name, config.filepath)
+    
+    if config.cross_validation:
+        # Cross validate
+        _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger)
+    else:
+        # "Normal run"
+        # W&B logging setup (only if enabled)
+        if config.wandb_logging:
+            wandb.init(project=config.wandb_project, name=config.wandb_name, config=vars(config),
+                       mode=config.wandb_mode)
 
-    # Initialize FlySmote
-    fly_smote = FlySmote(X_train, Y_train, X_test, Y_test)
+        x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
 
+        model = _train(x_train, y_train, x_val, y_val, config, tqdm_logger)
+        _test(model, x_test, y_test, config)
+        if config.wandb_logging:
+            wandb.finish()
+
+
+def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
     # Create clients and batch their data
-    clients = fly_smote.create_clients(X_train, Y_train, num_clients, initial='client', attribute_index=attribute_index)
+    clients = FlySmote.create_clients(x_train, y_train, config.num_clients, initial='client',
+                                      attribute_index=config.attribute_index)
 
-    # Batch test set
-    test_batched = tf.data.Dataset.from_tensor_slices((X_test, Y_test)).batch(len(Y_test))
+    start_time = time.time()
+
+    global_gan = _gan_loop(clients, config, tqdm_logger, x_val, y_val)
+    global_model = _fl_loop(clients, global_gan, config, tqdm_logger, x_val, y_val)
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"Training completed in {elapsed_time:.2f} seconds")
+
+    return global_model
+
+
+def _test(global_model, x_test, y_test, config):
+    test_results = NNModel.test_model(global_model, x_test, y_test, config.batch_size)
+    test_results = {f"{key}_test": value for key, value in test_results.items()}
+
+    logger.info(f"Final Test Results: {test_results}")
+    if config.wandb_logging:
+        wandb.log(test_results)
+
+    return test_results
+
+def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
+    logger.info(f"Starting {config.cross_validation_k}-Fold Cross-Validation")
+    kfold = KFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
+
+    fold_results = []
+    for fold_idx, (train_idx, val_idx) in enumerate(kfold.split(x_train, y_train)):
+        logger.info(f"Fold {fold_idx + 1}/{config.cross_validation_k}")
+
+        if config.wandb_logging:
+            wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_fold_{fold_idx + 1}", config=vars(config),
+                       mode=config.wandb_mode)
+
+        # Split data for this fold
+        x_train_fold, y_train_fold = x_train[train_idx], y_train[train_idx]
+        x_val_fold, y_val_fold = x_train[val_idx], y_train[val_idx]
+
+        model = _train(x_train_fold, y_train_fold, x_val_fold, y_val_fold, config, tqdm_logger)
+        fold_test_results = _test(model, x_test, y_test, config)
+        fold_results.append(fold_test_results)
+
+        if config.wandb_logging:
+            wandb.finish()
+
+    avg_results = {key: sum(d[key] for d in fold_results) / len(fold_results) for key in fold_results[0]}
+    logger.info(f"Average Cross-Validation Results: {avg_results}")
+
+    # Log average results to W&B
+    if config.wandb_logging:
+        wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_cv_average", config=vars(config),
+                   mode=config.wandb_mode)
+        wandb.log(avg_results)
+        wandb.finish()
+
+
+def _gan_loop(clients, config, tqdm_logger, x_test, y_test):
+    gan_clients = {client_name: [client_data, None] for client_name, client_data in clients.items()}
+
+    if config.ccmcb:
+        global_gan = ConditionalGAN(input_dim=x_test.shape[1], noise_dim=config.noise_dim,
+                                    n_classes=len(config.classes))
+
+        logger.info("GAN Training")
+        for round_num in tqdm(range(config.comms_rounds), desc=f"Communication Rounds GAN", file=tqdm_logger):
+
+            global_gan_weights = global_gan.get_generator_weights()
+            average_gan_weights, gan_clients = train_gan_clients_and_average(gan_clients, global_gan_weights,
+                                                                             config.get_gan_clients_training_config())
+            global_gan.set_generator_weights(average_gan_weights)
+
+            test_results = global_gan.test_gan(x_test, y_test)
+
+            logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
+            if config.wandb_logging:
+                test_results["round"] = round_num + 1
+                wandb.log(test_results)
+
+        return global_gan
+    return None
+
+
+def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
+    # Federated learning loop
+    logger.info("FL Training")
+
+    # Initialize global model
+    global_model = SimpleMLP.build(x_test, n=1)
 
     # Create an ExponentialDecay learning rate scheduler
     lr_schedule = ExponentialDecay(
-        initial_learning_rate=learning_rate,
-        decay_steps=comms_rounds,
+        initial_learning_rate=config.learning_rate,
+        decay_steps=config.comms_rounds,
         decay_rate=0.9,
         staircase=True
     )
-
     early_stopping = EarlyStopping(patience=5, restore_best_weights=True)
 
-
-
-    # Initialize global model
-    global_model = SimpleMLP.build(X_train, n=1)
-
-    global_gan = None
-    if args.ccmcb:
-        global_gan = MultiClassGAN(input_dim=X_train.shape[1])
-        global_gan.add_classes([0, 1])
-
-    # Metrics tracking
-    metrics_history = {
-        'sensitivity': [],
-        'specificity': [],
-        'balanced_accuracy': [],
-        'g_mean': [],
-        'fp_rate': [],
-        'fn_rate': [],
-        'accuracy': [],
-        'loss': [],
-        'mcc': []
-    }
-
-    start_time = time.time()
-    classes = [0, 1]
-
-    # GAN-Loop
-    if args.ccmcb:
-        for round_num in tqdm(range(comms_rounds), desc=f"Communication Rounds GAN"):
-            global_gan_weights = global_gan.get_all_weights()
-            global_gan_count = {label: 0 for label in classes}
-            scaled_local_gan_weights = {label: [] for label in classes}
-
-            with ProcessPoolExecutor(max_workers=args.workers) as executor:
-                # Parallelisiertes Training für Clients
-                client_args_list = [
-                    GANClientArgs(client_name, client_data, global_gan_weights, X_train, fly_smote, batch_size, classes, local_gan_epochs)
-                    for client_name, client_data in clients.items()
-                ]
-
-                results = list(executor.map(train_gan_client, client_args_list))
-
-            # accumulate results
-            for scaled_weights, gan_count in results:
-                for label in classes:
-                    global_gan_count[label] += gan_count[label]
-                    scaled_local_gan_weights[label].extend(scaled_weights[label])
-
-            # aggregation of GAN-weights
-            average_gan_weights = {}
-            for label in classes:
-                scaled = list(map(lambda x: fly_smote.scale_model_weights(x, 1 / global_gan_count[label]),
-                                  scaled_local_gan_weights[label]))
-                average_gan_weights[label] = fly_smote.sum_scaled_weights(scaled)
-
-            global_gan.set_all_weights(average_gan_weights)
-
-        # Federated learning loop
-    for round_num in tqdm(range(comms_rounds), desc="Communication Rounds"):
+    for round_num in tqdm(range(config.comms_rounds), desc="Communication Rounds", file=tqdm_logger):
 
         # Get global model weights
         global_weights = global_model.get_weights()
-
-        # Calculate global data count for scaling
-        # Calculate before so, the original size sets the impact for the global model.
-        # So the synthetic created data does not higher the impact
-        # TODO: does it make sense like this ?
-        global_count = sum([len(client) for client in clients.values()])
-
-        # Parallel client training
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            args_list = [
-                ClientArgs(
-                    client_name, client_data, global_weights, X_train, batch_size, early_stopping,
-                    fly_smote, threshold, k_value, r_value, local_epochs,
-                    loss_function, lr_schedule, metrics, global_count, g_value, global_gan
-                )
-                for client_name, client_data in clients.items()
-            ]
-
-            scaled_local_weights = list(executor.map(train_client, args_list))
-
-        # Aggregate scaled weights and update global model
-        average_weights = fly_smote.sum_scaled_weights(scaled_local_weights)
+        average_weights = train_clients_and_average(clients, global_weights, early_stopping, lr_schedule,
+                                                    global_gan.get_generator_weights(),
+                                                    config.get_clients_training_config())
         global_model.set_weights(average_weights)
 
         # Evaluate global model
-        for X_batch, Y_batch in test_batched:
-            global_accuracy, global_loss, conf_matrix = fly_smote.test_model(X_batch, Y_batch, global_model, round_num)
+        test_results = NNModel.test_model(global_model, x_test, y_test, config.batch_size)
 
-            TN, FP = conf_matrix[0]
-            FN, TP = conf_matrix[1]
-
-            sensitivity = TP / (TP + FN)
-            specificity = TN / (TN + FP)
-            balanced_accuracy = (sensitivity + specificity) / 2
-            g_mean = math.sqrt(sensitivity * specificity)
-            #fp_rate = FP / (FP + TN)
-            #fn_rate = FN / (FN + TP)
-            #mcc = ((TP * TN) - (FP * FN)) / math.sqrt(0.1 * 1e-10 + (TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-
-            # Update metrics history
-            metrics_history['sensitivity'].append(sensitivity)
-            metrics_history['specificity'].append(specificity)
-            metrics_history['balanced_accuracy'].append(balanced_accuracy)
-            metrics_history['g_mean'].append(g_mean)
-            #metrics_history['fp_rate'].append(fp_rate)
-            #metrics_history['fn_rate'].append(fn_rate)
-            metrics_history['accuracy'].append(global_accuracy)
-            metrics_history['loss'].append(global_loss)
-            #metrics_history['mcc'].append(mcc)
-
-            # Log metrics to W&B if enabled
-            if args.wandb_logging:
-                wandb.log({
-                    'global accuracy': global_accuracy,
-                    'global loss': global_loss,
-                    'sensitivity': sensitivity,
-                    'specificity': specificity,
-                    'balanced_accuracy': balanced_accuracy,
-                    'g_mean': g_mean
-                })
-
-    elapsed_time = time.time() - start_time
-    print(f"Training completed in {elapsed_time:.2f} seconds")
-    print(f"Final Accuracy: {metrics_history['accuracy'][-1]:.4f}")
+        logger.info(f"Round {round_num + 1} - Test Results: {test_results}")
+        # Log metrics to W&B if enabled
+        if config.wandb_logging:
+            test_results["round"] = round_num + 1
+            wandb.log(test_results)
+    return global_model
 
 
 if __name__ == '__main__':
     import multiprocessing
+
     multiprocessing.set_start_method('spawn')
     run()

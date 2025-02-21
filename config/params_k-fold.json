@@ -1,0 +1,24 @@
+[
+    {
+        "module": "code.FLY-SMOTE-CCMCB.main",
+        "dataset_name": "Bank",
+        "filepath": "./dataset/bank/bank/bank-full",
+        "k_value": 90,
+        "r_value": 0.4,
+        "threshold": 0.38,
+        "num_clients": 5,
+        "workers": 5,
+        "learning_rate": 0.02,
+        "comms_rounds": 50,
+        "wandb_logging": true,
+        "wandb_project": "FLY-SMOTE-CCMCB_CTGAN_k-fold",
+        "epochs": 3,
+        "attribute_index": 0,
+        "seed": 42,
+        "ccmcb": true,
+        "g_value": 0.1,
+        "epochs_gan": 20,
+        "noise": 50,
+        "cross_validation": true
+    }
+]
