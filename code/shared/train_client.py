@@ -1,5 +1,6 @@
 import logging
 import math
+from dataclasses import asdict
 
 import keras.backend as k
 import numpy as np
@@ -43,7 +44,7 @@ def train_client(client_args: ClientArgs):
                     verbose=keras_verbose)
 
     k.clear_session()
-    return local_model.get_weights(), num_local_samples
+    return client_args.client_name, local_model.get_weights(), num_local_samples
 
 
 def train_gan_client(client_args: GANClientArgs):
