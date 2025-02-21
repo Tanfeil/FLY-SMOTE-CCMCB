@@ -8,6 +8,8 @@ Refactored by: Tanfeil on 11/12/2024
 Description:
 This module defines a simple Multi-Layer Perceptron (MLP) class for binary classification tasks.
 """
+import logging
+
 import keras
 import numpy as np
 import tensorflow as tf
@@ -15,6 +17,8 @@ from keras.layers import Dense, Dropout, Input
 from keras.models import Sequential
 from sklearn.metrics import confusion_matrix, accuracy_score
 
+logger = logging.getLogger()
+keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 class SimpleMLP:
     @staticmethod
@@ -88,7 +92,7 @@ def test_model(model, x_test, y_test, batch_size):
 
     for x_batch, y_batch in dataset:
         # Vorhersagen für den aktuellen Batch (TensorFlow)
-        logits = model.predict(x_batch)  # Modellvorhersage
+        logits = model.predict(x_batch, verbose=keras_verbose)  # Modellvorhersage
         predictions = np.around(logits)  # Runden auf binäre Werte
         predictions = np.nan_to_num(predictions)  # NaN-Werte behandeln
         y_batch = np.nan_to_num(y_batch.numpy())  # NaN-Werte in Labels behandeln

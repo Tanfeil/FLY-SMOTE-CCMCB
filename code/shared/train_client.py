@@ -13,7 +13,7 @@ from code.shared.NNModel import SimpleMLP
 from code.shared.helper import check_imbalance
 from code.shared.structs import ClientArgs, GANClientArgs
 
-logger = logging.getLogger('FLY-SMOTE-CCMCB')
+logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
 

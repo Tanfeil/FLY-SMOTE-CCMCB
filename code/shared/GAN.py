@@ -105,14 +105,14 @@ class ConditionalGAN:
         labels = self.ensure_one_hot(labels, num_classes=self.n_classes)
 
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
-        return self.generator.predict([noise, labels])
+        return self.generator.predict([noise, labels], verbose=keras_verbose)
 
     def generate_label_samples(self, label, num_samples):
         labels = np.ones((num_samples, label))
 
         labels = self.ensure_one_hot(labels, num_classes=self.n_classes)
         noise = np.random.normal(0, 1, (len(labels), self.noise_dim))
-        return self.generator.predict([noise, labels])
+        return self.generator.predict([noise, labels], verbose=keras_verbose)
 
     def get_generator_weights(self):
         """

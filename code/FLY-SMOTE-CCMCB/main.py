@@ -5,6 +5,7 @@ import time
 import wandb
 from keras.callbacks import EarlyStopping
 from keras.optimizers.schedules import ExponentialDecay
+from sklearn.model_selection import train_test_split, KFold
 from tqdm import tqdm
 
 from code.shared import FlySmote
@@ -18,7 +19,6 @@ from .utils import parse_arguments, setup_seed
 
 logger = logging.getLogger()
 
-
 def run():
     # Argument parser setup
     config = parse_arguments()
@@ -30,25 +30,85 @@ def run():
     # seed setup
     setup_seed(config.seed)
 
-    # W&B logging setup (only if enabled)
-    if config.wandb_logging:
-        wandb.init(project=config.wandb_project, name=config.wandb_name, config=vars(config), mode=config.wandb_mode)
-
     # Load data
     x_train, y_train, x_test, y_test = read_data(config.dataset_name, config.filepath)
+    
+    if config.cross_validation:
+        # Cross validate
+        _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger)
+    else:
+        # "Normal run"
+        # W&B logging setup (only if enabled)
+        if config.wandb_logging:
+            wandb.init(project=config.wandb_project, name=config.wandb_name, config=vars(config),
+                       mode=config.wandb_mode)
 
+        x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
+
+        model = _train(x_train, y_train, x_val, y_val, config, tqdm_logger)
+        _test(model, x_test, y_test, config)
+        if config.wandb_logging:
+            wandb.finish()
+
+
+def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
     # Create clients and batch their data
     clients = FlySmote.create_clients(x_train, y_train, config.num_clients, initial='client',
                                       attribute_index=config.attribute_index)
 
     start_time = time.time()
 
-    global_gan = _gan_loop(clients, config, tqdm_logger, x_test, y_test)
-    _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test)
+    global_gan = _gan_loop(clients, config, tqdm_logger, x_val, y_val)
+    global_model = _fl_loop(clients, global_gan, config, tqdm_logger, x_val, y_val)
 
     elapsed_time = time.time() - start_time
-
     logger.info(f"Training completed in {elapsed_time:.2f} seconds")
+
+    return global_model
+
+
+def _test(global_model, x_test, y_test, config):
+    test_results = NNModel.test_model(global_model, x_test, y_test, config.batch_size)
+    test_results = {f"{key}_test": value for key, value in test_results.items()}
+
+    logger.info(f"Final Test Results: {test_results}")
+    if config.wandb_logging:
+        wandb.log(test_results)
+
+    return test_results
+
+def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
+    logger.info(f"Starting {config.cross_validation_k}-Fold Cross-Validation")
+    kfold = KFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
+
+    fold_results = []
+    for fold_idx, (train_idx, val_idx) in enumerate(kfold.split(x_train, y_train)):
+        logger.info(f"Fold {fold_idx + 1}/{config.cross_validation_k}")
+
+        if config.wandb_logging:
+            wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_fold_{fold_idx + 1}", config=vars(config),
+                       mode=config.wandb_mode)
+
+        # Split data for this fold
+        x_train_fold, y_train_fold = x_train[train_idx], y_train[train_idx]
+        x_val_fold, y_val_fold = x_train[val_idx], y_train[val_idx]
+
+        model = _train(x_train_fold, y_train_fold, x_val_fold, y_val_fold, config, tqdm_logger)
+        fold_test_results = _test(model, x_test, y_test, config)
+        fold_results.append(fold_test_results)
+
+        if config.wandb_logging:
+            wandb.finish()
+
+    avg_results = {key: sum(d[key] for d in fold_results) / len(fold_results) for key in fold_results[0]}
+    logger.info(f"Average Cross-Validation Results: {avg_results}")
+
+    # Log average results to W&B
+    if config.wandb_logging:
+        wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_cv_average", config=vars(config),
+                   mode=config.wandb_mode)
+        wandb.log(avg_results)
+        wandb.finish()
 
 
 def _gan_loop(clients, config, tqdm_logger, x_test, y_test):
@@ -110,6 +170,7 @@ def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
         if config.wandb_logging:
             test_results["round"] = round_num + 1
             wandb.log(test_results)
+    return global_model
 
 
 if __name__ == '__main__':

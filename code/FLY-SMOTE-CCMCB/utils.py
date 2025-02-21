@@ -45,6 +45,8 @@ class Config:
         self.attribute_index = args.attribute_index  # Attributindex zur Verteilung von Daten
         self.verbose = args.verbose  # Aktiviert detaillierte Ausgaben während des Trainings
         self.comms_rounds = args.comms_rounds  # Anzahl der Kommunikationsrunden in Federated Learning
+        self.cross_validation = args.cross_validation
+        self.cross_validation_k = args.cross_validation_k_value
 
     # --- Getter-Methoden für verschiedene Konfigurationsgruppen ---
     def get_dataset_config(self):
@@ -123,10 +125,10 @@ class Config:
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Train and evaluate a federated learning model.")
-    parser.add_argument("-d", "--dataset_name", type=str, help="Name of the dataset (Bank, Comppass or Adult.")
+    parser.add_argument("-d", "--dataset_name", type=str, required=True, help="Name of the dataset (Bank, Comppass or Adult.")
     parser.add_argument("-c", "--classes", type=int, nargs='+', default=[0, 1],
                         help="List of numerical classes that exist in dataset to train on.")
-    parser.add_argument("-f", "--filepath", type=str, help="Name of the directory containing the data.")
+    parser.add_argument("-f", "--filepath", type=str, required=True, help="Name of the directory containing the data.")
     parser.add_argument("--ccmcb", action='store_true', default=False, help="Run with GAN or not")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples to sample from.")
     parser.add_argument("-g", "--g_value", type=float, default=0.5, help="Ratio of samples from GAN.")
@@ -145,6 +147,8 @@ def parse_arguments():
     parser.add_argument("-wr", "--workers", type=int, default=1,
                         help="Number of workers for training. 1 for non parallel run")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
+    parser.add_argument("-cv", "--cross_validation", action='store_true', default=False, help="Run a cross-validation on a dataset.")
+    parser.add_argument("-cvk", "--cross_validation_k_value", type=int, default=5, help="Number of cross-validation samples to create.")
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
     parser.add_argument("--wandb_logging", action='store_true', default=False, help="Enable W&B logging.")
     parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
