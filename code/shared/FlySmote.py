@@ -7,14 +7,13 @@ Refactored by: Tanfeil on 11/12/2024.
 
 This Module to implements FLY-SMOTE for oversampling the minority class.
 """
+
 import random
 import warnings
 
-import keras
 import numpy as np
 import tensorflow as tf
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
+
 
 def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None):
     """
@@ -204,7 +203,7 @@ def kSMOTE(d_major, d_minor, k, r):
 
     # Perform interpolation to create synthetic data
     for xb in dmin_rand:
-        N = FlySmote.k_nearest_neighbors(d_minor, xb, k)  # Get k nearest neighbors
+        N = k_nearest_neighbors(d_minor, xb, k)  # Get k nearest neighbors
         Sxb = []  # List to store synthetic samples for a given point
         for s in range(Nks):
             j = N[0]
@@ -252,10 +251,10 @@ def create_synth_data(client_training_x, client_training_y, minority_label, k, r
     Returns:
         A tuple of synthetic feature data and synthetic labels.
     """
-    d_major_x, d_minor_x = FlySmote.splitYtrain(client_training_x, client_training_y, minority_label)  # Split data
+    d_major_x, d_minor_x = splitYtrain(client_training_x, client_training_y, minority_label)  # Split data
     if len(d_minor_x) == 0:
         return np.array(client_training_x), np.array(client_training_y)
-    x_syn = FlySmote.kSMOTE(d_major_x, d_minor_x, k, r)  # Generate synthetic data using k-SMOTE
+    x_syn = kSMOTE(d_major_x, d_minor_x, k, r)  # Generate synthetic data using k-SMOTE
     X_train_new = []  # List for new synthetic features
     Y_train_new = []  # List for new synthetic labels
 

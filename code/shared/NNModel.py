@@ -121,8 +121,8 @@ def test_model(model, x_test, y_test, batch_size):
     g_mean = np.sqrt(sensitivity * specificity)
 
     test_results = {
-        'accuracy': global_accuracy,
-        'loss': global_loss,
+        'accuracy': accuracy,
+        'loss': avg_loss,
         'sensitivity': sensitivity,
         'specificity': specificity,
         'balanced_accuracy': balanced_accuracy,
