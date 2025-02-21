@@ -48,7 +48,7 @@ def train_client(client_args: ClientArgs):
             x_client.extend(samples)
             y_client.extend(np.full(len(samples), minority_label))
 
-        x_client, y_client = FlySmote.create_synth_data(x_client, y_client, minority_label, k_value, r_value)
+        x_client, y_client = FlySmote.extend_with_k_smote(x_client, y_client, minority_label, k_value, r_value)
 
     x_client = np.array(x_client)
     y_client = np.array(y_client)

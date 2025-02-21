@@ -237,7 +237,7 @@ def splitYtrain(X_train, Y_train, minority_label):
     return d_major_x, d_minor_x  # Return the split datasets
 
 
-def create_synth_data(client_training_x, client_training_y, minority_label, k, r):
+def extend_with_k_smote(client_training_x, client_training_y, minority_label, k, r):
     """
     Creates synthetic data for the given client using the k-SMOTE algorithm.
 
