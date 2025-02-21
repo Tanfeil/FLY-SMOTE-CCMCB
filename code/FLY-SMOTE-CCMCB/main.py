@@ -14,7 +14,7 @@ from code.shared.NNModel import SimpleMLP
 from code.shared.helper import read_data
 from code.shared.logger_config import configure_logger, TqdmLogger
 from code.shared.train import train_gan_clients_and_average, train_clients_and_average
-from utils import parse_arguments, setup_seed
+from .utils import parse_arguments, setup_seed
 
 logger = logging.getLogger()
 

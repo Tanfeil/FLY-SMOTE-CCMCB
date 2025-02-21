@@ -9,7 +9,6 @@ def configure_logger(verbose):
     logging.basicConfig(level=level, format='%(asctime)s - %(levelname)s - %(message)s')
 
     tf.get_logger().setLevel(level)
-    tqdm
 
 class TqdmLogger:
     def __init__(self, logger):
