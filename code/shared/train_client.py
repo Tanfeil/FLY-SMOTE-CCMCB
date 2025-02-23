@@ -24,8 +24,10 @@ def train_client(client_args: ClientArgs):
     local_model = _initialize_local_NN(x_client, client_args.global_weights, client_args.loss_function,
                                        client_args.lr_schedule, client_args.metrics)
 
-    global_gan = ConditionalGAN(input_dim=x_client.shape[1], noise_dim=client_args.noise_dim)
-    global_gan.set_generator_weights(client_args.global_gan_weights)
+    global_gan = None
+    if client_args.global_gan_weights:
+        global_gan = ConditionalGAN(input_dim=x_client.shape[1], noise_dim=client_args.noise_dim)
+        global_gan.set_generator_weights(client_args.global_gan_weights)
 
     num_local_samples = len(y_client)
 
