@@ -157,8 +157,9 @@ def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
 
         # Get global model weights
         global_weights = global_model.get_weights()
+        global_gan_weights = global_gan.get_generator_weights() if config.ccmcb else None
         average_weights = train_clients_and_average(clients, global_weights, early_stopping, lr_schedule,
-                                                    global_gan.get_generator_weights(),
+                                                    global_gan_weights,
                                                     config.get_clients_training_config())
         global_model.set_weights(average_weights)
 
