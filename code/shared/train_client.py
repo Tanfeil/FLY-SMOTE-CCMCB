@@ -89,15 +89,16 @@ def _initialize_local_GAN(x_train, global_gan_weights, disc_weights, noise_dim):
     return local_gan
 
 
-def _handle_imbalance(x_client, y_client, global_gan, k_value, r_value, g_value, threshold):
+def _handle_imbalance(x_client, y_client, gan, k_value, r_value, g_value, threshold):
     minority_label, imbalance_threshold, len_minor, len_major = check_imbalance(y_client)
 
     if imbalance_threshold <= threshold:
         # Create Synth data
         # Generate Synthetic samples with GAN for kSmote
-        if global_gan is not None:
+        if gan is not None:
+            #TODO: could be interesting to replace local data by gan generated data?
             num_samples=min(math.floor(len_minor * g_value), len_major - len_minor)
-            samples = global_gan.generate_label_samples(minority_label, num_samples=num_samples)
+            samples = gan.generate_label_samples(minority_label, num_samples=num_samples)
 
             x_client.extend(samples)
             y_client.extend(np.full(len(samples), minority_label))
