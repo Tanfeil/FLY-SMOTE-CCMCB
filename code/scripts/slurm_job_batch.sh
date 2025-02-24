@@ -6,13 +6,14 @@
 #SBATCH --cpus-per-task=32              # 4 CPUs pro Task
 #SBATCH --mem-per-cpu=4G                # Speicher pro Task
 #SBATCH --time=11:00:00                 # Maximale Laufzeit
+#SBATCH --partition=enos
 #SBATCH --mail-user=jonathan.feilmeier@stud.uni-hannover.de
 #SBATCH --mail-type=ALL
 
 module load Miniforge3
 #conda create -n myenv python=3.11.5 numpy=1.26.4 pandas=2.2.3 requests scikit-learn tensorflow keras=3.5.0 tqdm wandb -y
 conda activate myenv
-cd $BIGWORK/FLY-SMOTE-CCMCB_ctgan
+cd $BIGWORK/FLY-SMOTE-CCMCB_multiple
 
 # Python-Skript für den aktuellen Task ausführen
 python -m code.scripts.runner_parallel --param_file "./config/params.json" --max_workers 3 --num_tasks 10 --task_id $SLURM_ARRAY_TASK_ID
