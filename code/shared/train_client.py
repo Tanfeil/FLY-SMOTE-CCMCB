@@ -96,7 +96,8 @@ def _handle_imbalance(x_client, y_client, global_gan, k_value, r_value, g_value,
         # Create Synth data
         # Generate Synthetic samples with GAN for kSmote
         if global_gan is not None:
-            samples = global_gan.generate_label_samples(minority_label, num_samples=math.floor(len_minor * g_value))
+            num_samples=max(math.floor(math.floor(len_minor * g_value)), len_major)
+            samples = global_gan.generate_label_samples(minority_label, num_samples=num_samples)
 
             x_client.extend(samples)
             y_client.extend(np.full(len(samples), minority_label))
@@ -117,7 +118,8 @@ def _create_synth_with_k_smote(x_client, y_client, classes, k):
         r_direction = 1 if label == minority_label else -1
 
         # samples from k neighbors and creates len(class) samples
-        x_syn_label = FlySmote.kSMOTE(d_major_x, d_minor_x, k, 1 * r_direction)
+        x_syn_label = FlySmote.interpolate(d_minor_x, k, 1)
+        #x_syn_label = FlySmote.kSMOTE(d_major_x, d_minor_x, k, 1 * r_direction)
         x_syn_label = np.vstack([np.array(points) for points in x_syn_label])
 
         x_syn.extend(x_syn_label)
