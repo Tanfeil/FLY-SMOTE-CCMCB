@@ -96,7 +96,7 @@ def _handle_imbalance(x_client, y_client, global_gan, k_value, r_value, g_value,
         # Create Synth data
         # Generate Synthetic samples with GAN for kSmote
         if global_gan is not None:
-            num_samples=max(math.floor(math.floor(len_minor * g_value)), len_major)
+            num_samples=min(math.floor(len_minor * g_value), len_major - len_minor)
             samples = global_gan.generate_label_samples(minority_label, num_samples=num_samples)
 
             x_client.extend(samples)
