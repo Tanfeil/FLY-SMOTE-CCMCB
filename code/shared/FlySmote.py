@@ -200,6 +200,36 @@ def kSMOTE(d_major, d_minor, k, r):
         S.append(Sxb)  # Append the synthetic samples
     return S
 
+def interpolate(d_class, k, r):
+    """
+    Generates synthetic data using a modification of k-SMOTE algorithm.
+
+    Args:
+        d_class: Data class to interpolate from
+        k: The number of nearest neighbors.
+        r: The ratio of synthetic samples to generate.
+
+    Returns:
+        A list of synthetic data points.
+    """
+    S = []  # List to store synthetic data points
+    Ns = int(r * len(d_class))  # Calculate the number of synthetic samples
+    Nks = int(Ns / k)  # Determine how many synthetic samples per neighbor
+
+    dmin_rand = random.sample(d_class, k)  # Randomly sample from the minority class
+
+    # Perform interpolation to create synthetic data
+    for xb in dmin_rand:
+        N = k_nearest_neighbors(d_class, xb, k)  # Get k nearest neighbors
+        Sxb = []  # List to store synthetic samples for a given point
+        for s in range(Nks):
+            j = N[0]
+            j = random.randint(0, len(N))  # Random index from neighbors
+            x_new = ((d_class[j] - xb) * random.sample(range(0, 1), 1))  # Interpolate new point
+            Sxb.append(xb + x_new)  # Add the new point to the list
+        S.append(Sxb)  # Append the synthetic samples
+    return S
+
 
 def splitYtrain(X_train, Y_train, minority_label):
     """
