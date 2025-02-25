@@ -40,6 +40,8 @@ To run a model on one dataset you should issue the following command:
 python main.py -f <dataname> -d <data file name> -k <samples from miniority> -r <ratio of new samples>
 ```
 
+For compatibility with scripts for generating plots and other things, please name wandb projects as follows: <dataset>_<some run specification of yours>
+
 ### Generate Documentation
 pydoctor --make-html --html-output=docs --theme=readthedocs --project-name="FLY-SMOTE-CCMCB" --intersphinx=https://docs.python.org/3/objects.inv ./code
 
