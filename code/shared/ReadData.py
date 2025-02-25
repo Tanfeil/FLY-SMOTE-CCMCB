@@ -155,7 +155,6 @@ class ReadData:
 
         return x_train, y_train, x_test, y_test
 
-    #TODO: Make working!
     @staticmethod
     def _load_compass(location):
         """
