@@ -59,7 +59,7 @@ def train_gan_client(client_args: GANClientArgs):
 
     logger.debug(f'{client_args.client_name}: Create synthetic data for GAN')
 
-    x_syn, y_syn = _create_synth_with_k_smote(x_client, y_client, client_args.classes, k=10)
+    x_syn, y_syn = _create_synth_with_k_smote(x_client, y_client, client_args.classes, k=50)
     x_syn, y_syn = _shuffle_data(x_syn, y_syn)
 
     # Train the GAN for both classes with the same weights from the global model
