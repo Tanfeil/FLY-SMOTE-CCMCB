@@ -5,7 +5,7 @@ import time
 import wandb
 from keras.callbacks import EarlyStopping
 from keras.optimizers.schedules import ExponentialDecay
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from tqdm import tqdm
 
 from code.shared import FlySmote
@@ -43,7 +43,7 @@ def run():
             wandb.init(project=config.wandb_project, name=config.wandb_name, config=vars(config),
                        mode=config.wandb_mode)
 
-        x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
+        x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, stratify=y_train)
 
         model = _train(x_train, y_train, x_val, y_val, config, tqdm_logger)
         _test(model, x_test, y_test, config)
@@ -79,7 +79,7 @@ def _test(global_model, x_test, y_test, config):
 
 def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
     logger.info(f"Starting {config.cross_validation_k}-Fold Cross-Validation")
-    kfold = KFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
+    kfold = StratifiedKFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
 
     fold_results = []
     for fold_idx, (train_idx, val_idx) in enumerate(kfold.split(x_train, y_train)):
