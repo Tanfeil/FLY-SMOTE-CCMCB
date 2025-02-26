@@ -1,9 +1,9 @@
 import os
 
-import wandb
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
+import wandb
 
 wandb.login()
 api = wandb.Api()
@@ -12,11 +12,12 @@ output_dir = "/mnt/c/Users/jonat/OneDrive/Dokumente/Uni/III/FL/Template_FLCourse
 os.makedirs(output_dir, exist_ok=True)
 
 projects = {
-    "multiple": ["FdgAvg", "FLY-SMOTE", "FLY-SMOTE-CCMCB"],
+    "multiple-wo-seed": ["FdgAvg", "FLY-SMOTE", "FLY-SMOTE-CCMCB"],
 }
 
-datasets = ["bank", "compass", "adult"]
+datasets = ["bank"]
 splits = {None: "random", 0: "age"}
+
 
 def method(config):
     if config["ccmcb"]:
@@ -24,6 +25,7 @@ def method(config):
     if not config["ccmcb"] and config["threshold"] > 0:
         return "FLY-SMOTE"
     return "FdgAvg"
+
 
 results = []
 
@@ -39,15 +41,13 @@ for project, methods in projects.items():
             m = method(run.config)
             spl = splits[run.config["attribute_index"]]
 
+            history["run"] = run.id
             history["run_id"] = f"{m}_{spl}"
 
             results.append(history)
 
-df = pd.concat(results)
-grouped = df.groupby(["round", "project", "dataset", "run_id"]).agg(
-    mean_balanced_acc=('balanced_accuracy', 'mean'),
-    std_balanced_acc=('balanced_accuracy', 'std'),
-).reset_index()
+df = pd.concat(results).reset_index()
+grouped = df
 
 sns.set(style="whitegrid")
 for project in projects.keys():
@@ -60,10 +60,11 @@ for project in projects.keys():
         sns.lineplot(
             data=dataset_data,
             x="round",
-            y="mean_balanced_acc",
+            y="balanced_accuracy",
             hue="run_id",
             markers=True,
-            palette="muted"
+            palette="muted",
+            errorbar=("ci", 95)
         )
 
         # Plot-Anpassungen
@@ -77,8 +78,7 @@ for project in projects.keys():
         # Plot anzeigen oder speichern
         plt.tight_layout()
 
-        output_path = os.path.join(output_dir, f"{dataset}_{project}.png")
+        output_path = os.path.join(output_dir, f"{dataset}_{project}_with-std.png")
         plt.savefig(output_path)
-
-        #plt.show()
+        # plt.show()
         plt.close()

@@ -59,7 +59,12 @@ for project, methods in projects.items():
                 plt.figure(figsize=(12, 6))
 
                 # Daten für das Projekt und den Split filtern
-                project_data = df[(df["project"] == project) & (df["split"] == split) & (df["dataset"] == dataset) & (df["method"] == m)]
+                project_data = df[
+                    (df["project"] == project) &
+                    (df["split"] == split) &
+                    (df["dataset"] == dataset) &
+                    (df["method"] == m)
+                    ]
 
                 # Linienplot für jeden Run
                 sns.lineplot(

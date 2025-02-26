@@ -19,6 +19,7 @@ from .utils import parse_arguments, setup_seed
 
 logger = logging.getLogger()
 
+
 def run():
     # Argument parser setup
     config = parse_arguments()
@@ -32,7 +33,7 @@ def run():
 
     # Load data
     x_train, y_train, x_test, y_test = read_data(config.dataset_name, config.filepath)
-    
+
     if config.cross_validation:
         # Cross validate
         _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger)
@@ -54,7 +55,8 @@ def run():
 def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
     # Create clients and batch their data
     clients = FlySmote.create_clients(x_train, y_train, config.num_clients, initial='client',
-                                      attribute_index=config.attribute_index, distribute_by_attribute=config.distribute_by_attribute)
+                                      attribute_index=config.attribute_index,
+                                      distribute_by_attribute=config.distribute_by_attribute)
 
     start_time = time.time()
 
@@ -77,16 +79,19 @@ def _test(global_model, x_test, y_test, config):
 
     return test_results
 
+
 def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
     logger.info(f"Starting {config.cross_validation_k}-Fold Cross-Validation")
     kfold = StratifiedKFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
 
     fold_results = []
+    config.wandb_name = config.wandb_name + '_' if config.wandb_name else ''
     for fold_idx, (train_idx, val_idx) in enumerate(kfold.split(x_train, y_train)):
         logger.info(f"Fold {fold_idx + 1}/{config.cross_validation_k}")
 
         if config.wandb_logging:
-            wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_fold_{fold_idx + 1}", config=vars(config),
+            wandb.init(project=config.wandb_project, name=f"{config.wandb_name}fold_{fold_idx + 1}",
+                       config=vars(config),
                        mode=config.wandb_mode)
 
         # Split data for this fold
@@ -105,7 +110,7 @@ def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
 
     # Log average results to W&B
     if config.wandb_logging:
-        wandb.init(project=config.wandb_project, name=f"{config.wandb_name}_cv_average", config=vars(config),
+        wandb.init(project=config.wandb_project, name=f"{config.wandb_name}cv_average", config=vars(config),
                    mode=config.wandb_mode)
         wandb.log(avg_results)
         wandb.finish()
