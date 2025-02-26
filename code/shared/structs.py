@@ -9,6 +9,7 @@ class ClientArgs:
     batch_size: int
     early_stopping: bool
     threshold: float
+    n_neural_network: int
     k_value: int
     r_value: float
     local_epochs: int
