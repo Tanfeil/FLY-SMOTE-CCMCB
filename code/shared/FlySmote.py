@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None):
+def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None, attribute_split_per_client=False):
     """
     Creates a dictionary of clients with data shards. Optionally distributes data based on a specified attribute index.
 
@@ -30,18 +30,33 @@ def create_clients(data_list, label_list, num_clients, initial='client', attribu
         A dictionary where keys are client names and values are data shards (data, label tuples).
     """
     client_names = ['{}_{}'.format(initial, i + 1) for i in range(num_clients)]
-    data_list = list(zip(data_list, label_list))
+    data_zipped = list(zip(data_list, label_list))
 
     # Split attributes to the clients
-    if attribute_index is not None:
-        data_list = sorted(data_list, key=lambda x: x[0][attribute_index], reverse=True)
-    else:
-        # Randomize the data if no attribute_index is provided
-        random.shuffle(data_list)
+    if attribute_split_per_client and attribute_index is not None:
 
-    # Shard the data and assign to clients
-    size = len(data_list) // num_clients
-    shards = [data_list[i:i + size] for i in range(0, size * num_clients, size)]
+        unique_values = set(data_list[:, attribute_index])
+        print(unique_values)
+
+        if len(unique_values) != num_clients:
+            raise ValueError(f"Number of unique values ({len(unique_values)}) does not match the number of clients ({num_clients}).")
+
+        shards = []
+        for unique_value in unique_values:
+            indices_of_unique_value = np.where(data_list[:, attribute_index]==unique_value)[0]
+            shard = [data_zipped[i] for i in indices_of_unique_value]
+
+            shards.append(shard)
+    else:
+        if attribute_index is not None:
+            data_zipped = sorted(data_zipped, key=lambda x: x[0][attribute_index], reverse=True)
+        else:
+            # Randomize the data if no attribute_index is provided
+            random.shuffle(data_zipped)
+
+        # Shard the data and assign to clients
+        size = len(data_zipped) // num_clients
+        shards = [data_zipped[i:i + size] for i in range(0, size * num_clients, size)]
 
     # Ensure the number of shards equals the number of clients
     assert len(shards) == len(client_names), "Mismatch between number of shards and clients."
