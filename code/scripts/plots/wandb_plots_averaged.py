@@ -13,11 +13,11 @@ os.makedirs(output_dir, exist_ok=True)
 
 projects = {
     #"k-fold": ["FLY-SMOTE-CCMCB"],
-    "multiple-v1": ["FdgAvg", "FLY-SMOTE", "FLY-SMOTE-CCMCB"]
+    "multiple": ["FdgAvg", "FLY-SMOTE", "FLY-SMOTE-CCMCB"],
     #"woseed_multiple": ["FdgAvg", "FLY-SMOTE", "FLY-SMOTE-CCMCB"],
 }
 
-datasets = ["bank"]
+datasets = ["bank", "compass", "adult"]
 splits = {None: "random", 0: "age"}
 
 def method(config):
@@ -31,19 +31,19 @@ results = []
 
 for project, methods in projects.items():
     for dataset in datasets:
-                project_name = f"{dataset}_{project}"
-                runs = api.runs(f"Tanfeil/{project_name}")
+        project_name = f"{dataset}_{project}"
+        runs = api.runs(f"Tanfeil/{project_name}")
 
-                for run in runs:
-                    history = run.history()
-                    history["project"] = project
-                    history["dataset"] = dataset
-                    m = method(run.config)
-                    spl = splits[run.config["attribute_index"]]
+        for run in runs:
+            history = run.history()
+            history["project"] = project
+            history["dataset"] = dataset
+            m = method(run.config)
+            spl = splits[run.config["attribute_index"]]
 
-                    history["run_id"] = f"{m}_{spl}"
+            history["run_id"] = f"{m}_{spl}"
 
-                    results.append(history)
+            results.append(history)
 
 df = pd.concat(results)
 grouped = df.groupby(["round", "project", "dataset", "run_id"]).agg(
@@ -53,14 +53,14 @@ grouped = df.groupby(["round", "project", "dataset", "run_id"]).agg(
 
 sns.set(style="whitegrid")
 for project in projects.keys():
-    plt.figure(figsize=(12, 6))
 
     project_data = grouped[grouped["project"] == project]
     for dataset in datasets:
-        project_data = project_data[project_data["dataset"] == dataset]
+        plt.figure(figsize=(12, 6))
+        dataset_data = project_data[project_data["dataset"] == dataset]
 
         sns.lineplot(
-            data=project_data,
+            data=dataset_data,
             x="round",
             y="mean_balanced_acc",
             hue="run_id",
@@ -81,4 +81,5 @@ for project in projects.keys():
 
         output_path = os.path.join(output_dir, f"{dataset}_{project}.png")
         plt.savefig(output_path)
+        plt.close()
         #plt.show()
