@@ -150,6 +150,7 @@ def parse_arguments():
     parser.add_argument("-cv", "--cross_validation", action='store_true', default=False, help="Run a cross-validation on a dataset.")
     parser.add_argument("-cvk", "--cross_validation_k_value", type=int, default=5, help="Number of cross-validation samples to create.")
     parser.add_argument("-a", "--attribute_index", type=int, default=None, help="Attribute index to distribute by")
+    parser.add_argument("-dba", "--distribute_by_attribute", action='store_true', default=False, help="Distribute to clients by attribute")
     parser.add_argument("--wandb_logging", action='store_true', default=False, help="Enable W&B logging.")
     parser.add_argument("-wp", "--wandb_project", type=str, default="FLY-SMOTE-CCMCB", help="W&B project name.")
     parser.add_argument("-wn", "--wandb_name", type=str, default=None, help="Name of W&B logging.")

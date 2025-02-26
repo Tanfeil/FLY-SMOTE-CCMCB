@@ -54,7 +54,7 @@ def run():
 def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
     # Create clients and batch their data
     clients = FlySmote.create_clients(x_train, y_train, config.num_clients, initial='client',
-                                      attribute_index=config.attribute_index)
+                                      attribute_index=config.attribute_index, distribute_by_attribute=config.distribute_by_attribute)
 
     start_time = time.time()
 
