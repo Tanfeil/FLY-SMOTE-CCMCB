@@ -59,7 +59,7 @@ def train_gan_client(client_args: GANClientArgs):
 
     logger.debug(f'{client_args.client_name}: Create synthetic data for GAN')
 
-    x_syn, y_syn = _create_synth_with_k_smote(x_client, y_client, client_args.classes, k=50)
+    x_syn, y_syn = _create_synth_with_k_smote(x_client, y_client, client_args.classes, k=client_args.k_value, r=client_args.r_value)
     x_syn, y_syn = _shuffle_data(x_syn, y_syn)
 
     # Train the GAN for both classes with the same weights from the global model
@@ -107,20 +107,16 @@ def _handle_imbalance(x_client, y_client, gan, k_value, r_value, g_value, thresh
     return x_client, y_client
 
 
-def _create_synth_with_k_smote(x_client, y_client, classes, k):
+def _create_synth_with_k_smote(x_client, y_client, classes, k, r):
     minority_label, _, len_minor, len_major = check_imbalance(y_client)
 
     x_syn = []
     y_syn = []
-
     for label in classes:
         d_major_x, d_minor_x = FlySmote.splitYtrain(x_client, y_client, label)
 
-        r_direction = 1 if label == minority_label else -1
-
         # samples from k neighbors and creates len(class) samples
-        x_syn_label = FlySmote.interpolate(d_minor_x, k, 1)
-        #x_syn_label = FlySmote.kSMOTE(d_major_x, d_minor_x, k, 1 * r_direction)
+        x_syn_label = FlySmote.interpolate(d_minor_x, k, r)
         x_syn_label = np.vstack([np.array(points) for points in x_syn_label])
 
         x_syn.extend(x_syn_label)
