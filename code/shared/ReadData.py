@@ -170,6 +170,9 @@ class ReadData:
         """
         df = pd.read_csv(f"{location}.csv")
 
+        # Imbalance dataset
+        df = df[df['Female'] > 0]
+
         features = ["Number_of_Priors", "score_factor", "Age_Above_FourtyFive", "Age_Below_TwentyFive", "Misdemeanor"]
         target = "Two_yr_Recidivism"
 
