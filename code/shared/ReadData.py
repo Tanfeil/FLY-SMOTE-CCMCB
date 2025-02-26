@@ -32,6 +32,7 @@ class ReadData:
         - Bank
         - Adult
         - Compass
+        - Hotels
 
     Attributes:
         data_name (str): The name of the dataset to be loaded.
@@ -60,6 +61,7 @@ class ReadData:
             "Bank": self._load_bank,
             "Adult": self._load_adult,
             "Compass": self._load_compass,
+            "Hotels": self._load_hotels
         }
 
         loader = loaders.get(self.data_name)
@@ -170,6 +172,19 @@ class ReadData:
 
         features = ["Number_of_Priors", "score_factor", "Age_Above_FourtyFive", "Age_Below_TwentyFive", "Misdemeanor"]
         target = "Two_yr_Recidivism"
+
+        X = df[features].values
+        y = df[target].values
+
+        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y)
+        return x_train, y_train, x_test, y_test
+
+    @staticmethod
+    def _load_hotels(location):
+        df = pd.read_csv(f"{location}.csv")
+
+        features = feature_names = ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","f16","f17","hotel"]
+        target = "fault"
 
         X = df[features].values
         y = df[target].values
