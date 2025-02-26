@@ -147,7 +147,7 @@ def parse_arguments():
     parser.add_argument("-kg", "--k_gan_value", type=int, default=50, help="Number of samples to sample from.")
     parser.add_argument("-r", "--r_value", type=float, default=0.4, help="Ratio of new samples to create.")
     parser.add_argument("-rg", "--r_gan_value", type=float, default=1, help="Ratio of samples from GAN.")
-    parser.add_argument("-t", "--threshold", type=float, default=0.33, help="Threshold for data imbalance.")
+    parser.add_argument("-t", "--threshold", type=float, default=0.38, help="Threshold for data imbalance.")
     parser.add_argument("-nc", "--num_clients", type=int, default=3, help="Number of clients for federated learning.")
     parser.add_argument("-lr", "--learning_rate", type=float, default=0.01, help="Initial learning rate.")
     parser.add_argument("-cr", "--comms_rounds", type=int, default=30, help="Number of communication rounds.")
