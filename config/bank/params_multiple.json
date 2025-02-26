@@ -104,6 +104,6 @@
         "ccmcb": true,
         "g_value": 0.5,
         "epochs_gan": 40,
-        "noise": 40
+        "noise": 128
     }
 ]
