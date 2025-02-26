@@ -142,7 +142,7 @@ def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
     logger.info("FL Training")
 
     # Initialize global model
-    global_model = SimpleMLP.build(x_test, n=1)
+    global_model = SimpleMLP.build(x_test, n=config.n_neural_network)
 
     # Create an ExponentialDecay learning rate scheduler
     lr_schedule = ExponentialDecay(

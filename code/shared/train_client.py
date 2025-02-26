@@ -21,7 +21,7 @@ def train_client(client_args: ClientArgs):
     # Extract client data for imbalance check
     x_client, y_client = map(np.array, zip(*client_args.client_data))
 
-    local_model = _initialize_local_NN(x_client, client_args.global_weights, client_args.loss_function,
+    local_model = _initialize_local_NN(x_client, client_args.global_weights, client_args.n_neural_network, client_args.loss_function,
                                        client_args.lr_schedule, client_args.metrics)
 
     global_gan = None
@@ -70,8 +70,8 @@ def train_gan_client(client_args: GANClientArgs):
     return client_args.client_name, local_gan.get_generator_weights(), local_gan.get_discriminator_weights(), num_local_samples
 
 
-def _initialize_local_NN(x_train, global_weights, loss_function, lr_schedule, metrics):
-    local_model = SimpleMLP.build(x_train, n=1)
+def _initialize_local_NN(x_train, global_weights, n_neural_network, loss_function, lr_schedule, metrics):
+    local_model = SimpleMLP.build(x_train, n=n_neural_network)
     optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
     local_model.compile(loss=loss_function, optimizer=optimizer, metrics=metrics)
     local_model.set_weights(global_weights)

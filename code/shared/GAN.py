@@ -22,9 +22,9 @@ class ConditionalGAN:
         label_input = keras.layers.Input(shape=(self.n_classes,))
         model_input = keras.layers.Concatenate()([noise_input, label_input])
 
-        x = keras.layers.Dense(256, activation='relu')(model_input)
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.Dense(128, activation='relu')(x)
+        # x = keras.layers.Dense(256, activation='relu')(model_input)
+        # x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Dense(128, activation='relu')(model_input)
         x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Dense(64, activation='relu')(x)
         x = keras.layers.BatchNormalization()(x)
@@ -39,9 +39,9 @@ class ConditionalGAN:
         label_input = keras.layers.Input(shape=(self.n_classes,))
         model_input = keras.layers.Concatenate()([data_input, label_input])
 
-        x = keras.layers.Dense(256, activation='relu')(model_input)
-        x = keras.layers.Dropout(0.3)(x)
-        x = keras.layers.Dense(128, activation='relu')(x)
+        # x = keras.layers.Dense(256, activation='relu')(model_input)
+        # x = keras.layers.Dropout(0.3)(x)
+        x = keras.layers.Dense(128, activation='relu')(model_input)
         x = keras.layers.Dropout(0.3)(x)
         x = keras.layers.Dense(64, activation='relu')(x)
         x = keras.layers.Dropout(0.3)(x)
@@ -102,8 +102,8 @@ class ConditionalGAN:
 
             g_loss = self.gan_model.train_on_batch([noise, random_labels], valid_labels)
 
-            if epoch % 10 == 0:
-                logger.info(f"Epoch {epoch} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
+            if (epoch + 1) % 10 == 0:
+                logger.info(f"Epoch {epoch + 1} | D Loss: {d_loss_real + d_loss_fake}, G Loss: {g_loss}")
 
     def generate_samples(self, labels):
         labels = self.ensure_one_hot(labels, num_classes=self.n_classes)
