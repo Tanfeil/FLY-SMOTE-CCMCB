@@ -15,7 +15,7 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, config):
                              initargs=(config["verbose"],)) as executor:
         # Parallelisiertes Training für Clients
         client_args_list = [
-            GANClientArgs(client_name, client_data, global_gan_weights, config["batch_size"],
+            GANClientArgs(client_name, client_data, global_gan_weights, config["batch_size"], config["k_gan_value"], config["r_gan_value"],
                           config["classes"],
                           config["epochs_gan"], config["noise_dim"])
             for client_name, client_data in gan_clients.items()

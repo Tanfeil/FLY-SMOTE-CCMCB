@@ -32,6 +32,8 @@ class GANClientArgs:
     client_data: any
     global_gan_weights: list
     batch_size: int
+    k_value: int
+    r_value: float
     classes: list
     epochs: int
     noise_dim: Optional[int] = 100
