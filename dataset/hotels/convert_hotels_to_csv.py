@@ -68,9 +68,6 @@ final_df = pd.concat(data_frames, ignore_index=True)
 
 final_df.to_csv("hotels.csv", index=False)
 
-positive_df = final_df[final_df['fault'] == 1]
-negative_df = final_df[final_df['fault'] == 0]
-
 # Funktion zum Erzeugen von Datensätzen mit verschiedenen positiven/negativen Verhältnissen
 def create_datasets(positive_df, negative_df, ratios):
     datasets = {}
@@ -93,13 +90,21 @@ def create_datasets(positive_df, negative_df, ratios):
 
     return datasets
 
+def create_datasets_with_ratio(df, ratios, path):
+    positive_df = final_df[df['fault'] == 1]
+    negative_df = final_df[df['fault'] == 0]
 
-# Verhältnisse definieren
+    # Datensätze mit den gewünschten Verhältnissen erstellen
+    datasets = create_datasets(positive_df, negative_df, ratios)
+
+    # Speichern der Datensätze als separate CSV-Dateien
+    for ratio, dataset in datasets.items():
+        dataset.to_csv(f"{path}-ratio1-{ratio}.csv", index=False)
+
 ratios = [4, 10, 20, 30]
 
-# Datensätze mit den gewünschten Verhältnissen erstellen
-datasets = create_datasets(positive_df, negative_df, ratios)
 
-# Speichern der Datensätze als separate CSV-Dateien
-for ratio, dataset in datasets.items():
-    dataset.to_csv(f"hotels_ratio_1-{ratio}.csv", index=False)
+create_datasets_with_ratio(final_df, ratios, "./imbalance/hotels")
+
+for i in range(len(hotel_values)):
+    create_datasets_with_ratio(final_df, [4], f"./imbalance_seperate_1-4/hotel{i}")
