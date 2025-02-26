@@ -22,7 +22,7 @@ class ConditionalGAN:
         label_input = keras.layers.Input(shape=(self.n_classes,))
         model_input = keras.layers.Concatenate()([noise_input, label_input])
 
-        x = keras.layers.Dense(128, activation='relu')(model_input)
+        x = keras.layers.Dense(256, activation='relu')(model_input)
         x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Dense(256, activation='relu')(x)
         x = keras.layers.BatchNormalization()(x)
@@ -39,7 +39,7 @@ class ConditionalGAN:
 
         x = keras.layers.Dense(256, activation='relu')(model_input)
         x = keras.layers.Dropout(0.3)(x)
-        x = keras.layers.Dense(128, activation='relu')(x)
+        x = keras.layers.Dense(256, activation='relu')(x)
         x = keras.layers.Dropout(0.3)(x)
         x = keras.layers.Dense(1, activation='sigmoid')(x)
 
