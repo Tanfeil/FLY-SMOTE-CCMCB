@@ -84,4 +84,5 @@ for project, methods in projects.items():
 
                 output_path = os.path.join(output_dir, f"{dataset}_{project}_{m}_{split}.png")
                 plt.savefig(output_path)
+                plt.close()
                 #plt.show()
