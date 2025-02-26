@@ -231,4 +231,3 @@ class ConditionalGAN:
 
         # Otherwise, convert to one-hot format
         return keras.utils.to_categorical(labels, num_classes=num_classes)
-
