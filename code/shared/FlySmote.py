@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None, attribute_split_per_client=False):
+def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None, distribute_by_attribute=False):
     """
     Creates a dictionary of clients with data shards. Optionally distributes data based on a specified attribute index.
 
@@ -33,7 +33,7 @@ def create_clients(data_list, label_list, num_clients, initial='client', attribu
     data_zipped = list(zip(data_list, label_list))
 
     # Split attributes to the clients
-    if attribute_split_per_client and attribute_index is not None:
+    if distribute_by_attribute and attribute_index is not None:
 
         unique_values = set(data_list[:, attribute_index])
         print(unique_values)
