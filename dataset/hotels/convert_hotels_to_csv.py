@@ -80,7 +80,7 @@ def create_datasets(positive_df, negative_df, ratios):
         num_positives_needed = int(len(negative_df) * 1/ratio)
 
         # Zufällig eine Teilmenge der negativen Labels auswählen
-        sampled_positives = negative_df.sample(num_positives_needed, random_state=42)
+        sampled_positives = positive_df.sample(num_positives_needed, random_state=42)
 
         # Kombiniere die positiven und negativen Datensätze
         dataset = pd.concat([negative_df, sampled_positives], ignore_index=True)
