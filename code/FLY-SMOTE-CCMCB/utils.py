@@ -153,7 +153,7 @@ def parse_arguments():
     parser.add_argument("-cr", "--comms_rounds", type=int, default=30, help="Number of communication rounds.")
     parser.add_argument("-e", "--epochs", type=int, default=3, help="Number of local epochs.")
     parser.add_argument("-eg", "--epochs_gan", type=int, default=50, help="Number of local gan epochs.")
-    parser.add_argument("--noise_dim", type=int, default=100, help="Size of noise for generator")
+    parser.add_argument("--noise_dim", type=int, default=128, help="Size of noise for generator")
     parser.add_argument("-lf", "--loss_function", type=str, default="binary_crossentropy", help="Loss function to use.")
     parser.add_argument("-b", "--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("-m", "--metrics", nargs='+', default=["accuracy"],
