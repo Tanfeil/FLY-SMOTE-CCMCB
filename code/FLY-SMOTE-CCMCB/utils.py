@@ -20,6 +20,7 @@ class Config:
         self.epochs = args.epochs  # Anzahl der Epochen
         self.metrics = args.metrics  # Liste von Metriken zur Evaluation
         self.learning_rate = args.learning_rate  # Lernrate
+        self.n_neural_network = args.n_neural_network
 
         # --- Federated Learning (FL)-spezifische Parameter ---
         self.num_clients = args.num_clients  # Anzahl der Clients für Federated Learning
@@ -65,7 +66,8 @@ class Config:
             "loss_function": self.loss_function,
             "epochs": self.epochs,
             "metrics": self.metrics,
-            "learning_rate": self.learning_rate
+            "learning_rate": self.learning_rate,
+            "n_neural_network": self.n_neural_network
         }
 
     def get_fl_config(self):
@@ -108,6 +110,7 @@ class Config:
         return {
             "batch_size": self.batch_size,
             "threshold": self.threshold,
+            "n_neural_network": self.n_neural_network,
             "k_value": self.k_value,
             "r_value": self.r_value,
             "epochs": self.epochs,
@@ -138,6 +141,7 @@ def parse_arguments():
                         help="List of numerical classes that exist in dataset to train on.")
     parser.add_argument("-f", "--filepath", type=str, required=True, help="Name of the directory containing the data.")
     parser.add_argument("--ccmcb", action='store_true', default=False, help="Run with GAN or not")
+    parser.add_argument("-n_nn", "--n_neural_network", type=int, default=1, help="Scale of neurons for hidden layers n * input_size")
     parser.add_argument("-k", "--k_value", type=int, default=3, help="Number of samples to sample from.")
     parser.add_argument("-g", "--g_value", type=float, default=0.5, help="Ratio of samples from GAN.")
     parser.add_argument("-kg", "--k_gan_value", type=int, default=50, help="Number of samples to sample from.")

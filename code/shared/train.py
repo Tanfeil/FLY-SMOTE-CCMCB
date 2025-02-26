@@ -53,7 +53,7 @@ def train_clients_and_average(clients, global_weights, early_stopping, lr_schedu
         args_list = [
             ClientArgs(
                 client_name, client_data, global_weights, config["batch_size"], early_stopping,
-                config["threshold"], config["k_value"], config["r_value"], config["epochs"],
+                config["threshold"], config["n_neural_network"], config["k_value"], config["r_value"], config["epochs"],
                 config["loss_function"], lr_schedule, config["metrics"], num_global_samples, config["g_value"],
                 global_gan_weights, config["noise_dim"]
             )
