@@ -59,6 +59,7 @@ for file, hotel in zip(npy_files, hotel_values):
     # Erstelle einen DataFrame mit den Daten und füge die Spalte 'hotel' hinzu
     df = pd.DataFrame(data, columns=feature_names)
     df['hotel'] = hotel
+    df['fault'] = df['fault'].astype(int)
 
     data_frames.append(df)
 
