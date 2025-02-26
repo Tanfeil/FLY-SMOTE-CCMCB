@@ -36,7 +36,6 @@ def create_clients(data_list, label_list, num_clients, initial='client', attribu
     if distribute_by_attribute and attribute_index is not None:
 
         unique_values = set(data_list[:, attribute_index])
-        print(unique_values)
 
         if len(unique_values) != num_clients:
             raise ValueError(f"Number of unique values ({len(unique_values)}) does not match the number of clients ({num_clients}).")

@@ -43,6 +43,7 @@ class Config:
         self.ccmcb = args.ccmcb  # Aktiviert oder deaktiviert den GAN-Modus
         self.seed = args.seed  # Zufallszahlengenerierung für Reproduzierbarkeit
         self.attribute_index = args.attribute_index  # Attributindex zur Verteilung von Daten
+        self.distribute_by_attribute = args.distribute_by_attribute
         self.verbose = args.verbose  # Aktiviert detaillierte Ausgaben während des Trainings
         self.comms_rounds = args.comms_rounds  # Anzahl der Kommunikationsrunden in Federated Learning
         self.cross_validation = args.cross_validation
@@ -94,6 +95,7 @@ class Config:
             "ccmcb": self.ccmcb,
             "seed": self.seed,
             "attribute_index": self.attribute_index,
+            "distribute_by_attribute": self.distribute_by_attribute,
             "verbose": self.verbose,
             "comms_rounds": self.comms_rounds
         }
