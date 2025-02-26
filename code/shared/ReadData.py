@@ -21,7 +21,7 @@ from sklearn import preprocessing
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelBinarizer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import LabelBinarizer, OneHotEncoder, StandardScaler, MinMaxScaler
 
 
 class ReadData:
@@ -118,7 +118,7 @@ class ReadData:
                 [f"{feature}_{cat}" for cat in lb.classes_] if (values.ndim > 1 and feature not in continuous_features) else [feature]
             )
 
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y)
         return x_train, y_train, x_test, y_test
 
     @staticmethod
@@ -176,6 +176,9 @@ class ReadData:
         features = ["Number_of_Priors", "score_factor", "Age_Above_FourtyFive", "Age_Below_TwentyFive", "Misdemeanor"]
         target = "Two_yr_Recidivism"
 
+        scaler = MinMaxScaler()
+        df[features] = scaler.fit_transform(df[features])
+
         X = df[features].values
         y = df[target].values
 
@@ -186,10 +189,13 @@ class ReadData:
     def _load_hotels(location):
         df = pd.read_csv(f"{location}.csv")
 
-        features = ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","f16","f17","hotel"]
+        features = ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","f16","f17"]
         target = "fault"
 
-        X = df[features].values
+        scaler = MinMaxScaler()
+        df[features] = scaler.fit_transform(df[features])
+
+        X = df[features + ["hotel"]].values
         y = df[target].values
 
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y)
