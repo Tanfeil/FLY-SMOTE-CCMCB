@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 This package implements a federated learning system with a focus on training and evaluating a model enhanced by Generative Adversarial Networks (GANs). It aims to address the challenges of imbalanced learning in federated environments, particularly by using the SMOTE (Synthetic Minority Over-sampling Technique) to balance datasets.
 

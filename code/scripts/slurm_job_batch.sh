@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 #SBATCH --job-name=fly-smote-parallel
 #SBATCH --output=/bigwork/nhwast10/logs/job_output_%A/job_output_%A_%a.log
 #SBATCH --error=/bigwork/nhwast10/logs/job_error_%A/job_error_%A_%a.log

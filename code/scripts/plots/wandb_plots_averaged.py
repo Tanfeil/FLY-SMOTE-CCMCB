@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Module for generating and saving plots of the mean balanced accuracy for different projects and datasets.
 
