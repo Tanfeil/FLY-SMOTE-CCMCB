@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 This module provides functionality for running parameter variants in parallel across multiple tasks. It loads parameter combinations from a JSON file, executes the variants in separate processes, and logs the results.
 
