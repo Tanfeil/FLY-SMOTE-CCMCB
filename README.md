@@ -27,7 +27,7 @@ The code is divided as follows:
 * In Scripts can be found different scripts, to create plots, run FLY-SMOTE-CCMCB by JSON configs or start it as a SLURM Job on Clusters.
 * dataset/hotels contains raw and processed data of the dataset from (https://github.com/upcbdipt/CDW_FedAvg/tree/main)
 
-A documentation can be found under: 
+A documentation can be found under: https://github.com/Tanfeil/FLY-SMOTE-CCMCB
 
 ## Environment Setup
 To use this code are several steps needed
