@@ -1,45 +1,79 @@
-# FLY-SMOTE: Re-balancing the non-IID IoT Edge Devices Data in Federated Learning System
+# FLY-SMOTE-CCMCB
 
-In recent years, the data available from IoT devices have increased rapidly. Using a machine learning solution to detect
-faults in these devices requires the release of device data to a central server. However, these data typically contain
-sensitive information, leading to the need for privacy-preserving distributed machine learning solutions, such as
-federated learning, where a model is trained locally on the edge device, and only the trained model weights are shared
-with a central server. Device failure data are typically imbalanced, i.e., the number of failures is minimal compared to
-the number of normal samples. Therefore, re-balancing techniques are needed to improve the performance of a machine
-learning model. In this paper, we present FLY-SMOTE, a new approach to re-balance the data in different non-IID
-scenarios by generating synthetic data for the minority class in supervised learning tasks using a modified SMOTE
-method. Our approach takes $k$ samples from the minority class and generates $Y$ new synthetic samples based on one of
-the nearest neighbors of each $k$ sample. An experimental campaign on a real IoT dataset and three well-known public
-datasets show that the proposed solution improves the balance accuracy without compromising the model's accuracy.
+This Repository implements the 
 
 ## The data used in this project:
 
+* [Hotels](https://github.com/upcbdipt/CDW_FedAvg/tree/main)
 * [Adult](https://archive.ics.uci.edu/ml/datasets/adult)
 * [Compass](https://www.kaggle.com/datasets/danofer/compass)
 * [Bank](https://archive.ics.uci.edu/ml/datasets/bank+marketing)
 
 ## Configurations
 
-| Dataset |   Bank    | Compass | Adult |
-|:-------:|:---------:|:-------:|:-----:|
-|    k    |     5     |    5    |   5   |
-|    r    | 0.2 / 0.3 |   0.3   |  0.2  |
+Configurations for different Setups, can be found as JSON Files under config
 
 ## Code
 
 The code is divided as follows:
 
-* The main.py python file contains the necessary code to run an experiement.
-* The FlySmote.py contains the necessary functions to apply fly-smote re-balancing method.
-* the NNModel.py contains the neural network model.
-* The ReadData.py file contains the necessary functions to read the datasets.
+* The code.FLY-SMOTE-CCMCB.main python file contains the necessary code to run an experiement.
+* The code.shared.FlySmote contains the necessary functions to apply fly-smote re-balancing method.
+* the code.shared.NNModel contains the neural network model.
+* The code.shared.GAN contains the CGAN
+* The code.shared.DatasetLoader file contains the necessary functions to read the datasets.
+* The code.shared.train_client holds functions to train one client
+* All other modules hold helper functions or configurations functions
+* In Scripts can be found different scripts, to create plots, run FLY-SMOTE-CCMCB by JSON configs or start it as a SLURM Job on Clusters.
+* dataset/hotels contains raw and processed data of the dataset from (https://github.com/upcbdipt/CDW_FedAvg/tree/main)
 
-To run a model on one dataset you should issue the following command:
+A documentation can be found under: 
 
+## Environment Setup
+To use this code are several steps needed
+
+### Conda setup
 ```bash
-python main.py -f <dataname> -d <data file name> -k <samples from miniority> -r <ratio of new samples>
+conda create -n myenv python=3.11.5
+conda activate myenv
+
+pip install -r requirements.txt
 ```
 
+### Load Datasets into dataset
+```bash
+python -m code.scripts.download_datasets.py
+```
+
+## Run FLY-SMOTE-CCMCB
+There are different options to run the method:
+
+### From CLI
+```bash
+python -m code.FLY-SMOTE-CCMCB.main -d <dataset> -f <datasetpath>
+```
+All other parameters have settings by default. To see the parameters just call 
+```bash
+python -m code.FLY-SMOTE-CCMCB.main -h
+```
+
+### With a JSON Config
+If you want to use some predefined configurations you can run
+```bash
+python -m code.scripts.runner_parallel --param_file <path to config> --max_workers 3 --num_tasks 5
+```
+To see all parameters call
+```bash
+python -m code.scripts.runner_parallel -h
+```
+### Run a SLURM job
+To run configuration as a SLURM job on a cluster the call is
+```bash
+sbatch code/scripts/slurm_job_batch.sh
+```
+
+Note that you have to adjust the SLURM settings to your cluster and directory configurations.
+### Plots and wandb project names
 For compatibility with scripts for generating plots and other things, please name wandb projects as follows: <dataset>_<some run specification of yours>
 
 ### Generate Documentation
@@ -47,28 +81,20 @@ pydoctor --make-html --html-output=docs --theme=readthedocs --project-name="FLY-
 
 ## Prerequisites
 
-The python packages needed are:
+The python packages needed, as stated in requirements.txt are:
 
-* numpy
-* pandas
-* sklearn
-* scipy
-* matplotlib
-* tensorflow
-* keras
+* keras==3.5.0
+* matplotlib==3.10.1
+* numpy==1.26.4
+* pandas==2.2.3
+* requests==2.32.3
+* scikit-learn==1.6.1
+* seaborn==0.13.2
+* tensorflow==2.17.0
+* tqdm==4.67.1
+* wandb==0.19.7
 
 ## Reference
 
 If you re-use this work, please cite:
 
-```
-@ARTICLE{9800764,
-  author={Younis, Raneen and Fisichella, Marco},
-  journal={IEEE Access}, 
-  title={FLY-SMOTE: Re-Balancing the Non-IID IoT Edge Devices Data in Federated Learning System}, 
-  year={2022},
-  volume={10},
-  number={},
-  pages={65092-65102},
-  doi={10.1109/ACCESS.2022.3184309}}
-```
