@@ -1,16 +1,26 @@
+"""
+Module for generating and saving plots of the mean balanced accuracy for different projects and datasets.
+
+This module interacts with Weights & Biases (W&B) to fetch the results of experiments for multiple projects,
+processes the data to calculate the mean and standard deviation of balanced accuracy for different runs,
+and generates line plots showing the results over training rounds.
+"""
+
 import os
 
-import wandb
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
+import wandb
+
+# Module docstring
 
 # Authenticate to Weights & Biases
 wandb.login()
 api = wandb.Api()
 
 # Output directory for saving plots
-output_dir = "/mnt/c/Users/jonat/OneDrive/Dokumente/Uni/III/FL/Template_FLCourse_Report/images/"
+output_dir = "./plots"
 os.makedirs(output_dir, exist_ok=True)
 
 # Define projects and their associated methods
@@ -22,19 +32,23 @@ projects = {
 datasets = ["adult", "compass", "bank"]
 splits = {None: "random", 0: "age"}
 
+
 def method(config):
     """
-    Determine the method type based on the configuration parameters.
+    Determines the method type based on the configuration parameters.
+
     Args:
-        config (dict): Configuration dictionary of a W&B run.
+        config (dict): Configuration dictionary of a W&B run, which contains various hyperparameters and settings.
+
     Returns:
-        str: The method type (e.g., "FLY-SMOTE-CCMCB").
+        str: The method type determined by the configuration (e.g., "FLY-SMOTE-CCMCB").
     """
     if config["ccmcb"]:
         return "FLY-SMOTE-CCMCB"
     if not config["ccmcb"] and config["threshold"] > 0:
         return "FLY-SMOTE"
     return "FdgAvg"
+
 
 # List to collect all historical results
 results = []
@@ -70,7 +84,6 @@ sns.set(style="whitegrid")
 
 # Generate and save plots for each project and dataset
 for project in projects.keys():
-
     project_data = grouped[grouped["project"] == project]
     for dataset in datasets:
         plt.figure(figsize=(12, 6))
@@ -99,5 +112,5 @@ for project in projects.keys():
         output_path = os.path.join(output_dir, f"{dataset}_{project}.png")
         plt.savefig(output_path)
 
-        #plt.show()
+        # plt.show()
         plt.close()
