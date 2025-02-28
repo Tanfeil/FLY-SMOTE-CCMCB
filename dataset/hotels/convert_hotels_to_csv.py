@@ -1,3 +1,16 @@
+"""
+Module for loading and processing data for hotel fault prediction.
+
+This module handles the loading of `.npy` files, each representing sensor data from different hotels.
+It combines the data into a single DataFrame, assigns appropriate hotel IDs, and generates datasets
+with specified positive-to-negative label ratios for model training purposes.
+
+The module includes functionality to:
+- Load `.npy` files and combine the data into a unified DataFrame with metadata.
+- Create datasets with a given ratio of positive (fault) and negative (no fault) samples.
+- Save the generated datasets as CSV files for further use.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -113,6 +126,7 @@ def generate_and_save_datasets(data, ratios, output_path):
     # Save each dataset as a separate CSV file
     for ratio, dataset in datasets.items():
         dataset.to_csv(f"{output_path}-ratio1-{ratio}.csv", index=False)
+
 
 if __name__ == "__main__":
     # Load and combine all data
