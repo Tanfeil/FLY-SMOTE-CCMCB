@@ -56,6 +56,20 @@ All other parameters have settings by default. To see the parameters just call
 ```bash
 python -m code.FLY-SMOTE-CCMCB.main -h
 ```
+Examples:
+- FLY-SMOTE-CCMCB
+```bash
+python -m code.FLY-SMOTE-CCMCB.main -d <dataset> -f <datasetpath> --ccmcb
+```
+- FLY-SMOTE
+```bash
+python -m code.FLY-SMOTE-CCMCB.main -d <dataset> -f <datasetpath> 
+```
+-FdgAvg
+```bash
+python -m code.FLY-SMOTE-CCMCB.main -d <dataset> -f <datasetpath> --threshold 0
+```
+Change the other params like k, r, g if you need to
 
 ### With a JSON Config
 If you want to use some predefined configurations you can run
