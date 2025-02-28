@@ -1,18 +1,40 @@
+"""
+This module provides functionality for running parameter variants in parallel across multiple tasks. It loads parameter combinations from a JSON file, executes the variants in separate processes, and logs the results.
+
+Functions:
+- load_parameters: Load and process parameter combinations from a JSON file.
+- execute_variant: Execute a single parameter variant using subprocesses.
+- run_in_batches: Distribute the work of running parameter variants across multiple tasks in parallel.
+"""
+
+import argparse
+import json
 import logging
 import subprocess
-import json
-from itertools import combinations, product
-import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-import argparse
+from itertools import combinations, product
+
+import numpy as np
 
 from code.shared.logger_config import setup_logger
 
 # Set up logging configuration
 logger = logging.getLogger()
 
+
 def load_parameters(param_file):
-    """Load parameters from a JSON file and generate all combinations."""
+    """
+    Load parameters from a JSON file and generate all combinations.
+
+    Args:
+        param_file (str): Path to the JSON file containing parameter definitions.
+
+    Returns:
+        list: A list of dictionaries representing all possible combinations of parameters.
+
+    Example:
+        load_parameters("./config/params.json")
+    """
     with open(param_file, "r") as file:
         raw_parameters = json.load(file)
 
@@ -45,7 +67,22 @@ def load_parameters(param_file):
 
 
 def execute_variant(parameters):
-    """Run a single variant using the provided parameters."""
+    """
+    Run a single variant using the provided parameters.
+
+    Args:
+        parameters (dict): A dictionary containing parameter names as keys and their corresponding values.
+
+    Returns:
+        dict: A dictionary with the following keys:
+            - "params": The input parameters.
+            - "returncode": The return code of the process.
+            - "stdout": The standard output from the process.
+            - "stderr": The standard error from the process.
+
+    Example:
+        execute_variant({'module': 'my_module', 'param1': 10, 'param2': [1, 2]})
+    """
     command = ["python", "-m", parameters['module']]
     del parameters['module']
 
@@ -69,7 +106,22 @@ def execute_variant(parameters):
 
 
 def run_in_batches(param_file, max_workers, total_tasks, task_id, verbose=False):
-    """Execute the parameter variants assigned to this specific task."""
+    """
+    Execute the parameter variants assigned to this specific task in parallel batches.
+
+    Args:
+        param_file (str): Path to the parameter file containing the parameter combinations.
+        max_workers (int): The maximum number of workers for parallel processing.
+        total_tasks (int): The total number of tasks to split the work across.
+        task_id (int): The task ID (0-based index) to identify the specific task's assigned parameters.
+        verbose (bool, optional): Flag to enable detailed logging. Defaults to False.
+
+    Returns:
+        None: This function only logs the progress and results of the executed variants.
+
+    Example:
+        run_in_batches("./config/params.json", 4, 10, 0, verbose=True)
+    """
     parameter_combinations = load_parameters(param_file)
     total_variants = len(parameter_combinations)
     logger.info(f"Total {total_variants} Variants to process")
@@ -116,6 +168,7 @@ if __name__ == "__main__":
     setup_logger(args.verbose)
 
     import multiprocessing
+
     multiprocessing.set_start_method('spawn')
 
     # Run the batch process with the provided arguments
