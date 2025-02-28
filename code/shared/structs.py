@@ -1,15 +1,19 @@
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass
-class ClientArgs:
+class ClientConfiguration:
+    """
+    Stores configuration parameters for a client in federated learning.
+    """
     client_name: str
     client_data: any
     global_weights: list
     batch_size: int
     early_stopping: bool
     threshold: float
-    n_neural_network: int
+    hidden_layer_multiplier: int
     k_value: int
     r_value: float
     local_epochs: int
@@ -21,21 +25,29 @@ class ClientArgs:
     global_gan_weights: Optional[list] = None
     noise_dim: Optional[int] = None
 
+
 @dataclass
-class ClientArgsWithGAN(ClientArgs):
+class ClientConfigurationWithGAN(ClientConfiguration):
+    """
+    Extension of ClientConfiguration for GAN-specific settings.
+    """
     g_value: float
     global_gan_weights: list
     noise_dim: int
 
+
 @dataclass
-class GANClientArgs:
+class GANClientConfiguration:
+    """
+    Stores configuration parameters for training a GAN model on a client.
+    """
     client_name: str
     client_data: any
     global_gan_weights: list
     batch_size: int
     k_value: int
     r_value: float
-    classes: list
+    class_labels: list
     epochs: int
     noise_dim: Optional[int] = 100
     discriminator_layers: Optional[list] = None
