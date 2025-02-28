@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 This Module contains functions for training clients (GAN or FNN) in parallel and aggregate results
 """

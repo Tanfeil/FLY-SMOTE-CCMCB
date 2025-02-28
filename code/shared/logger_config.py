@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Jonathan Feilmeier
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 This module contains functions and classes to configure logging and handle custom logging
 for TensorFlow and TQDM output.
