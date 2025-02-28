@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+"""
+Main module for the FLY-SMOTE-CCMCB project.
+
+This module orchestrates the federated learning (FL) training and GAN training process for the FLY-SMOTE-CCMCB project.
+It handles data loading, cross-validation, training, evaluation, and logging, including integration with W&B for experiment tracking.
+
+Functions:
+    run: The entry point for the training and evaluation process.
+    _train: The function that trains the model using federated learning and GAN.
+    _evaluate: Evaluates the trained model's performance on the test set.
+    _cross_validation: Executes k-fold cross-validation if enabled in the config.
+    _gan_loop: A loop for training the GAN.
+    _fl_loop: A loop for federated learning communication rounds.
+"""
+
 import logging
 import time
 
@@ -19,8 +34,19 @@ from .utils import parse_arguments, setup_seed
 
 logger = logging.getLogger()
 
-
 def run():
+    """
+    Orchestrates the entire process of training and evaluating the model.
+
+    This function handles argument parsing, logging setup, dataset loading, cross-validation (if enabled),
+    training the model, evaluating the model on the test set, and logging results to W&B.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
     # Parse command line arguments
     config = parse_arguments()
 
@@ -52,6 +78,24 @@ def run():
 
 
 def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
+    """
+    Trains the model using a combination of GAN and federated learning.
+
+    This function orchestrates the training by distributing data to clients,
+    performing GAN training (if necessary), and executing federated learning (FL) rounds
+    to average weights from client models.
+
+    Args:
+        x_train (array-like): Training features.
+        y_train (array-like): Training labels.
+        x_val (array-like): Validation features.
+        y_val (array-like): Validation labels.
+        config (Namespace): Configuration object with hyperparameters.
+        tqdm_logger (TqdmLogger): Logger for tqdm progress.
+
+    Returns:
+        global_model (Keras model): The trained global model.
+    """
     # Distribute data to clients
     clients = FlySmote.distribute_data_to_clients(x_train, y_train, config.num_clients, client_prefix='client',
                                                   attribute_index=config.attribute_index,
@@ -72,6 +116,21 @@ def _train(x_train, y_train, x_val, y_val, config, tqdm_logger):
 
 
 def _evaluate(global_model, x_test, y_test, config):
+    """
+    Evaluates the performance of the trained model on the test set.
+
+    This function calculates and logs the performance metrics of the model on the test dataset.
+    It also integrates with W&B for logging the results if configured.
+
+    Args:
+        global_model (Keras model): The trained global model.
+        x_test (array-like): Test features.
+        y_test (array-like): Test labels.
+        config (Namespace): Configuration object with hyperparameters.
+
+    Returns:
+        test_results (dict): Dictionary containing test results for the model.
+    """
     # Evaluate the model's performance on the test set
     test_results = NNModel.evaluate_model(global_model, x_test, y_test, config.batch_size)
     test_results = {f"{key}_test": value for key, value in test_results.items()}
@@ -84,6 +143,23 @@ def _evaluate(global_model, x_test, y_test, config):
 
 
 def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
+    """
+    Executes k-fold cross-validation on the training dataset.
+
+    This function splits the data into k subsets, trains and evaluates the model on each fold,
+    and logs the results. It averages the results across all folds and logs the final results to W&B.
+
+    Args:
+        x_train (array-like): Training features.
+        y_train (array-like): Training labels.
+        x_test (array-like): Test features.
+        y_test (array-like): Test labels.
+        config (Namespace): Configuration object with hyperparameters.
+        tqdm_logger (TqdmLogger): Logger for tqdm progress.
+
+    Returns:
+        None
+    """
     logger.info(f"Starting {config.cross_validation_k}-Fold Cross-Validation")
     kfold = StratifiedKFold(n_splits=config.cross_validation_k, shuffle=True, random_state=config.seed)
 
@@ -124,6 +200,22 @@ def _cross_validation(x_train, y_train, x_test, y_test, config, tqdm_logger):
 
 
 def _gan_loop(clients, config, tqdm_logger, x_test, y_test):
+    """
+    Performs training for the GAN model.
+
+    This function manages the communication rounds for GAN training, updates the generator weights,
+    and logs the test results for the GAN after each round.
+
+    Args:
+        clients (dict): Dictionary of client data.
+        config (Namespace): Configuration object with hyperparameters.
+        tqdm_logger (TqdmLogger): Logger for tqdm progress.
+        x_test (array-like): Test features.
+        y_test (array-like): Test labels.
+
+    Returns:
+        global_gan (ConditionalGAN or None): The trained global GAN or None if GAN training is not enabled.
+    """
     gan_clients = {client_name: [client_data, None] for client_name, client_data in clients.items()}
 
     if config.ccmcb:
@@ -150,6 +242,23 @@ def _gan_loop(clients, config, tqdm_logger, x_test, y_test):
 
 
 def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
+    """
+    Performs federated learning training.
+
+    This function manages the communication rounds for federated learning,
+    updates the global model weights, and logs the test results after each round.
+
+    Args:
+        clients (dict): Dictionary of client data.
+        global_gan (ConditionalGAN or None): The global GAN (if CCMCB is enabled).
+        config (Namespace): Configuration object with hyperparameters.
+        tqdm_logger (TqdmLogger): Logger for tqdm progress.
+        x_test (array-like): Test features.
+        y_test (array-like): Test labels.
+
+    Returns:
+        global_model (Keras model): The trained global model after federated learning.
+    """
     logger.info("Starting FL Training")
 
     # Initialize global model
@@ -187,6 +296,11 @@ def _fl_loop(clients, global_gan, config, tqdm_logger, x_test, y_test):
 
 
 if __name__ == '__main__':
+    """
+    Main entry point to run the training process in a multiprocess environment.
+
+    This function sets the start method for multiprocessing and calls the `run` function.
+    """
     import multiprocessing
 
     multiprocessing.set_start_method('spawn')
