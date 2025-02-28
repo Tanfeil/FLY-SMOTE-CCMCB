@@ -1,93 +1,94 @@
 import logging
 import subprocess
 import json
-from itertools import product
+from itertools import combinations, product
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-import itertools
 import argparse
 
-from code.shared.logger_config import configure_logger
+from code.shared.logger_config import setup_logger
 
+# Set up logging configuration
 logger = logging.getLogger()
 
-def load_params(param_file):
-    """Lädt die Parameter aus der JSON-Datei und erzeugt alle Kombinationen."""
-    with open(param_file, "r") as f:
-        raw_params = json.load(f)
+def load_parameters(param_file):
+    """Load parameters from a JSON file and generate all combinations."""
+    with open(param_file, "r") as file:
+        raw_parameters = json.load(file)
 
-    full_param_list = []
+    all_parameter_combinations = []
 
-    for param_set in raw_params:
-        resolved_params = {}
+    for param_set in raw_parameters:
+        resolved_parameters = {}
 
-        # Iteriere durch die Schlüssel und löse Ranges auf
-        for key, value in param_set.items():
-            if isinstance(value, dict) and "range" in value:
-                start, stop, step = value["range"]
-                resolved_params[key] = np.arange(start, stop + step, step).tolist()
-            elif isinstance(value, dict) and "perm" in value:
-                numbers = value["perm"]
-                sets = []
-                for r in range(1, len(numbers) + 1):
-                    sets.extend(itertools.combinations(numbers, r))
-                valid_sets = [sorted(s, reverse=value["reverse"]) for s in sets]
-                resolved_params[key] = valid_sets
+        # Resolve ranges and permutations in parameter sets
+        for param_name, param_value in param_set.items():
+            if isinstance(param_value, dict):
+                if "range" in param_value:
+                    start, stop, step = param_value["range"]
+                    resolved_parameters[param_name] = np.arange(start, stop + step, step).tolist()
+                elif "perm" in param_value:
+                    numbers = param_value["perm"]
+                    param_combinations = [
+                        sorted(comb, reverse=param_value["reverse"]) for r in range(1, len(numbers) + 1)
+                        for comb in combinations(numbers, r)
+                    ]
+                    resolved_parameters[param_name] = param_combinations
             else:
-                resolved_params[key] = value if isinstance(value, list) else [value]
+                resolved_parameters[param_name] = param_value if isinstance(param_value, list) else [param_value]
 
-        # Erzeuge alle Kombinationen der Parameter
-        keys, values = zip(*resolved_params.items())
-        full_param_list.extend(dict(zip(keys, combination)) for combination in product(*values))
+        # Generate all combinations of the resolved parameters
+        keys, values = zip(*resolved_parameters.items())
+        all_parameter_combinations.extend(dict(zip(keys, combination)) for combination in product(*values))
 
-    return full_param_list
+    return all_parameter_combinations
 
 
-def run_variant(params):
-    """Runs a single Variant"""
-    cmd = ["python", "-m", params['module']]
-    del params['module']
+def execute_variant(parameters):
+    """Run a single variant using the provided parameters."""
+    command = ["python", "-m", parameters['module']]
+    del parameters['module']
 
-    for key, value in params.items():
-        if isinstance(value, bool):
-            if value:
-                cmd.append(f"--{key}")
-            continue
-        if isinstance(value, list):
-            cmd.append(f"--{key}")
-            cmd.extend(map(str, value))
-            continue
-        cmd.extend([f"--{key}", str(value)])
+    for param_name, param_value in parameters.items():
+        if isinstance(param_value, bool):
+            if param_value:
+                command.append(f"--{param_name}")
+        elif isinstance(param_value, list):
+            command.append(f"--{param_name}")
+            command.extend(map(str, param_value))
+        else:
+            command.extend([f"--{param_name}", str(param_value)])
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True)
     return {
-        "params": params,
+        "params": parameters,
         "returncode": result.returncode,
         "stdout": result.stdout,
         "stderr": result.stderr,
     }
 
 
-def batch_run(param_file, max_workers, num_tasks, task_id, verbose=False):
-    """Führt nur den Teil der Varianten aus, der diesem Task zugeordnet ist."""
+def run_in_batches(param_file, max_workers, total_tasks, task_id, verbose=False):
+    """Execute the parameter variants assigned to this specific task."""
+    parameter_combinations = load_parameters(param_file)
+    total_variants = len(parameter_combinations)
+    logger.info(f"Total {total_variants} Variants to process")
 
-    params_list = load_params(param_file)
-    total_variants = len(params_list)
-    logger.info(f"Total {total_variants} Variants")
-
-    # Teile die Parameterliste gleichmäßig auf
-    chunk_size = (total_variants + num_tasks - 1) // num_tasks
+    # Split the parameters into roughly equal chunks across tasks
+    chunk_size = (total_variants + total_tasks - 1) // total_tasks
     start_idx = task_id * chunk_size
     end_idx = min(start_idx + chunk_size, total_variants)
 
-    # Subset der Parameter für diesen Task
-    params_subset = params_list[start_idx:end_idx]
+    # Get the subset of parameters assigned to this task
+    parameters_for_task = parameter_combinations[start_idx:end_idx]
 
-    logger.debug(f"Task {task_id}: Running {len(params_subset)} Variants")
+    logger.debug(f"Task {task_id}: Running {len(parameters_for_task)} Variants")
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        results = list(executor.map(run_variant, params_subset))
+    with ProcessPoolExecutor(max_workers=max_workers, initializer=setup_logger,
+                             initargs=(verbose,)) as executor:
+        results = list(executor.map(execute_variant, parameters_for_task))
 
+    # Log the results for each variant processed
     for i, result in enumerate(results):
         logger.info(f"Variant {start_idx + i + 1} finished with return code {result['returncode']}")
         logger.debug(f"Standard Output:\n{result['stdout']}")
@@ -95,31 +96,33 @@ def batch_run(param_file, max_workers, num_tasks, task_id, verbose=False):
 
 
 if __name__ == "__main__":
-    # Argumente für die Task-Nummer und Anzahl der Tasks
+    # Argument parser for the task execution
     parser = argparse.ArgumentParser(description="Parallel Batch Runner")
     parser.add_argument("--param_file", type=str, default="./config/params.json", help="Path to parameter file")
-    parser.add_argument("--max_workers", type=int, default=1, help="Maximum workers for subprocesses")
-    parser.add_argument("--num_tasks", type=int, default=1, help="Total number of tasks")
+    parser.add_argument("--max_workers", type=int, default=1, help="Maximum number of workers for subprocesses")
+    parser.add_argument("--total_tasks", type=int, default=1, help="Total number of tasks to split the work")
     parser.add_argument("--task_id", type=int, default=None, help="Task ID (0-based index)")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable detailed logging")
     args = parser.parse_args()
 
-    # Überprüfen, ob task_id erforderlich ist
-    if args.num_tasks != 1 and args.task_id is None:
-        parser.error("--task_id is required when num_tasks != 1")
+    # Ensure task_id is provided when num_tasks > 1
+    if args.total_tasks != 1 and args.task_id is None:
+        parser.error("--task_id is required when total_tasks != 1")
 
     if args.task_id is None:
         args.task_id = 0
 
-    configure_logger(args.verbose)
+    # Set up logging configuration
+    setup_logger(args.verbose)
 
     import multiprocessing
     multiprocessing.set_start_method('spawn')
 
-    batch_run(
+    # Run the batch process with the provided arguments
+    run_in_batches(
         args.param_file,
         args.max_workers,
-        args.num_tasks,
+        args.total_tasks,
         args.task_id,
         args.verbose
     )

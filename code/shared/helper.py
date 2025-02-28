@@ -1,31 +1,52 @@
 import numpy as np
+from .DatasetLoader import DatasetLoader
 
-from .ReadData import ReadData
 
-def read_data(file_name, directory):
-    data_loader = ReadData(file_name)
+def load_data_from_file(file_name, directory):
+    """
+    Loads data from the specified file in the given directory.
+
+    Args:
+        file_name (str): The name of the file to load.
+        directory (str): The directory where the file is located.
+
+    Returns:
+        Data loaded from the file.
+    """
+    data_loader = DatasetLoader(file_name)
     return data_loader.load_data(directory)
 
-def check_imbalance(y_data):
-    assert len(y_data) > 0, "data should not be empty for balance check"
 
-    counts = np.bincount(y_data)
-    num_zeros = counts[0]
-    if counts.size == 2:
-        num_ones = counts[1]
-    else:
-        num_ones = 0
+def check_class_imbalance(labels):
+    """
+    Checks if the dataset is imbalanced and returns the imbalance details.
 
-    if num_zeros < num_ones:
+    Args:
+        labels (np.ndarray): Array containing the labels of the dataset.
+
+    Returns:
+        tuple:
+            - minority_label (int): The label of the minority class.
+            - imbalance_threshold (float): The imbalance ratio of the minority class to the majority class.
+            - minority_class_size (int): The number of samples in the minority class.
+            - majority_class_size (int): The number of samples in the majority class.
+    """
+    if len(labels) == 0:
+        raise ValueError("The dataset should not be empty for balance check")
+
+    # Count the number of occurrences of each label
+    label_counts = np.bincount(labels)
+    num_minority_class = label_counts.min()  # Either the zeros or the ones
+    num_majority_class = label_counts.max()  # The other class
+
+    # Determine the minority and majority labels based on counts
+    if num_minority_class == label_counts[0]:
         minority_label = 0
-        #TODO: should be never division by zero? except no zeros neither ones?
-        threshold = num_zeros / (num_ones + 1e-13)
-        len_minor = num_zeros
-        len_major = num_ones
     else:
         minority_label = 1
-        threshold = num_ones / (num_zeros + 1e-13)
-        len_minor = num_ones
-        len_major = num_zeros
 
-    return minority_label, threshold, len_minor, len_major
+    assert num_majority_class != 0, "majority class should not be Zero"
+
+    imbalance_threshold = num_minority_class / num_majority_class
+
+    return minority_label, imbalance_threshold, num_minority_class, num_majority_class
