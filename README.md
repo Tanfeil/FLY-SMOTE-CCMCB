@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 ### Load Datasets into dataset
 ```bash
-python -m code.scripts.download_datasets.py
+python -m code.scripts.download_datasets
 ```
 
 ## Run FLY-SMOTE-CCMCB
