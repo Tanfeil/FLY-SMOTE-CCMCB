@@ -1,5 +1,12 @@
+"""
+This module contains functions and classes to configure logging and handle custom logging
+for TensorFlow and TQDM output.
+"""
+
 import logging
+
 import tensorflow as tf
+
 
 def setup_logger(is_verbose):
     """
@@ -7,12 +14,17 @@ def setup_logger(is_verbose):
 
     Args:
         is_verbose (bool): Flag to indicate whether to enable verbose logging.
+
+    Returns:
+        None
     """
     log_level = logging.DEBUG if is_verbose else logging.INFO  # Set logging level based on verbosity
-    logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')  # Basic logging configuration
+    logging.basicConfig(level=log_level,
+                        format='%(asctime)s - %(levelname)s - %(message)s')  # Basic logging configuration
     logging.captureWarnings(True)  # Capture warnings in the log
 
     tf.get_logger().setLevel(log_level)  # Set TensorFlow logger level
+
 
 class TqdmLogger:
     """
@@ -21,7 +33,14 @@ class TqdmLogger:
     Args:
         logger (logging.Logger): The logger to write messages to.
     """
+
     def __init__(self, logger):
+        """
+        Initializes the TqdmLogger instance with the provided logger.
+
+        Args:
+            logger (logging.Logger): The logger to write messages to.
+        """
         self.logger = logger
 
     def write(self, message):
@@ -30,6 +49,9 @@ class TqdmLogger:
 
         Args:
             message (str): The message to be logged.
+
+        Returns:
+            None
         """
         # Only log non-empty messages to avoid logging empty lines from tqdm
         if message.strip():
@@ -38,5 +60,8 @@ class TqdmLogger:
     def flush(self):
         """
         Placeholder flush function to satisfy tqdm's call, but not needed here.
+
+        Returns:
+            None
         """
         pass

@@ -1,11 +1,38 @@
+"""
+Module for Conditional GAN (Generative Adversarial Network) implementation.
+
+This module provides the implementation of a Conditional GAN where both the generator
+and discriminator are conditioned on labels to generate class-specific data. The main class
+is `ConditionalGAN`, which defines methods for building the generator and discriminator models,
+training the GAN, generating samples, and handling the weights of both models.
+"""
+
 import logging
-import numpy as np
+
 import keras
+import numpy as np
 
 logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
+
 class ConditionalGAN:
+    """
+    A Conditional Generative Adversarial Network (Conditional GAN) for generating class-specific data.
+
+    This class defines a Conditional GAN where the generator and discriminator are conditioned
+    on labels (classes) to generate class-specific data. The GAN model consists of a generator
+    that creates fake data and a discriminator that classifies real vs fake data.
+
+    Attributes:
+        input_dim (int): The dimension of the generated data.
+        noise_dim (int): The dimension of the noise vector used as input for the generator.
+        n_classes (int): The number of classes for conditional generation.
+        generator (keras.models.Model): The generator model.
+        discriminator (keras.models.Model): The discriminator model.
+        gan_model (keras.models.Model): The combined GAN model.
+    """
+
     def __init__(self, input_dim, noise_dim=100, n_classes=2):
         """
         Initializes the ConditionalGAN class with the given dimensions.
