@@ -1,4 +1,8 @@
+"""
+This module contains helper functions for loading data and checking class imbalance in datasets.
+"""
 import numpy as np
+
 from .DatasetLoader import DatasetLoader
 
 
@@ -11,7 +15,7 @@ def load_data_from_file(file_name, directory):
         directory (str): The directory where the file is located.
 
     Returns:
-        Data loaded from the file.
+        Data loaded from the file, typically a dataset.
     """
     data_loader = DatasetLoader(file_name)
     return data_loader.load_data(directory)
@@ -30,6 +34,10 @@ def check_class_imbalance(labels):
             - imbalance_threshold (float): The imbalance ratio of the minority class to the majority class.
             - minority_class_size (int): The number of samples in the minority class.
             - majority_class_size (int): The number of samples in the majority class.
+
+    Raises:
+        ValueError: If the dataset is empty.
+        AssertionError: If the majority class size is zero.
     """
     if len(labels) == 0:
         raise ValueError("The dataset should not be empty for balance check")

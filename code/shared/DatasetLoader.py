@@ -15,6 +15,7 @@ Supported datasets:
 """
 
 from collections import defaultdict
+
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
@@ -56,6 +57,9 @@ class DatasetLoader:
 
         Returns:
             tuple: Four numpy arrays (x_train, y_train, x_test, y_test).
+
+        Raises:
+            ValueError: If the dataset name is unsupported.
         """
         # Mapping dataset names to the appropriate loader method
         dataset_loaders = {
@@ -68,7 +72,8 @@ class DatasetLoader:
         # Fetch the appropriate loader method based on the dataset name
         loader_function = dataset_loaders.get(self.dataset_name)
         if loader_function is None:
-            raise ValueError(f"Unsupported dataset name: {self.dataset_name}. Please choose from 'Bank', 'Adult', 'Compass', or 'Hotels'.")
+            raise ValueError(
+                f"Unsupported dataset name: {self.dataset_name}. Please choose from 'Bank', 'Adult', 'Compass', or 'Hotels'.")
 
         # Call the loader function and return the results
         return loader_function(filepath)
@@ -122,7 +127,8 @@ class DatasetLoader:
 
             # Track feature names for one-hot encoded columns
             feature_names.extend(
-                [f"{column}_{category}" for category in label_binarizer.classes_] if (column_data.ndim > 1 and column not in continuous_features) else [column]
+                [f"{column}_{category}" for category in label_binarizer.classes_] if (
+                        column_data.ndim > 1 and column not in continuous_features) else [column]
             )
 
         # Split into training and testing sets
@@ -186,7 +192,8 @@ class DatasetLoader:
         df = df[df['Female'] > 0]
 
         # Define features and target
-        feature_columns = ["Number_of_Priors", "score_factor", "Age_Above_FourtyFive", "Age_Below_TwentyFive", "Misdemeanor"]
+        feature_columns = ["Number_of_Priors", "score_factor", "Age_Above_FourtyFive", "Age_Below_TwentyFive",
+                           "Misdemeanor"]
         target_column = "Two_yr_Recidivism"
 
         # Scale features
@@ -215,7 +222,8 @@ class DatasetLoader:
         df = pd.read_csv(f"{filepath}.csv")
 
         # Define features and target
-        feature_columns = ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","f16","f17"]
+        feature_columns = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12", "f13", "f14",
+                           "f15", "f16", "f17"]
         target_column = "fault"
 
         # Scale features

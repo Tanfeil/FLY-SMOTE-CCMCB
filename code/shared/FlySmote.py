@@ -11,6 +11,7 @@ batching, weight scaling, k-nearest neighbors (k-NN), and generating synthetic s
 
 import random
 import warnings
+
 import numpy as np
 import tensorflow as tf
 
@@ -177,7 +178,8 @@ def kSMOTE(majority_data, minority_data, k, r):
     minority_data = np.array(minority_data)
 
     synthetic_samples = []
-    num_synthetic_samples = int(r * (len(majority_data) - len(minority_data)))  # Calculate the number of synthetic samples
+    num_synthetic_samples = int(
+        r * (len(majority_data) - len(minority_data)))  # Calculate the number of synthetic samples
     samples_per_neighbor = num_synthetic_samples // k
 
     sampled_minority = random.sample(minority_data.tolist(), k)  # Randomly sample from the minority class
