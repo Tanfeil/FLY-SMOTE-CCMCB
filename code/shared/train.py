@@ -1,3 +1,6 @@
+"""
+This Module contains functions for training clients (GAN or FNN) in parallel and aggregate results
+"""
 from concurrent.futures import ProcessPoolExecutor
 
 from code.shared import FlySmote
@@ -11,12 +14,22 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, config):
     Trains GAN clients in parallel and aggregates the results to return the average GAN weights.
 
     Args:
-        gan_clients (dict): Dictionary of client names and their data.
-        global_gan_weights (list): The global GAN weights to be used for training.
+        gan_clients (dict): A dictionary where keys are client names and values are their data.
+        global_gan_weights (list): The global GAN weights to be used for training the clients.
         config (dict): Configuration dictionary containing parameters like batch size, epochs, etc.
+            - "workers" (int): Number of workers for parallel processing.
+            - "verbose" (bool): Flag for logging verbosity.
+            - "batch_size" (int): Batch size for client training.
+            - "k_gan_value" (int): Parameter related to the GAN training.
+            - "r_gan_value" (float): Regularization parameter for GAN.
+            - "class_labels" (list): List of class labels for the dataset.
+            - "epochs_gan" (int): Number of epochs for GAN training.
+            - "noise_dim" (int): Dimension of noise input for the GAN.
 
     Returns:
-        tuple: Average GAN weights and updated client information.
+        tuple: A tuple containing:
+            - average_gan_weights (list): The averaged GAN weights after training all clients.
+            - gan_clients (dict): The updated dictionary of GAN clients with their new weights.
     """
     total_samples = 0
     client_gan_weights = []
@@ -25,7 +38,6 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, config):
     # Using a process pool to parallelize the training of GAN clients
     with ProcessPoolExecutor(max_workers=config["workers"], initializer=setup_logger,
                              initargs=(config["verbose"],)) as executor:
-
         # Prepare client configuration for parallel training
         client_args = [
             GANClientConfiguration(
@@ -55,15 +67,27 @@ def train_gan_clients_and_average(gan_clients, global_gan_weights, config):
 def train_clients_and_average(clients, global_weights, early_stopping, lr_schedule, global_gan_weights,
                               config):
     """
-    Trains clients in parallel and aggregates the results to return the average weights.
+    Trains clients in parallel and aggregates the results to return the average model weights.
 
     Args:
-        clients (dict): Dictionary of client names and their data.
-        global_weights (list): The global model weights.
-        early_stopping (bool): Whether to use early stopping.
-        lr_schedule (any): The learning rate schedule.
-        global_gan_weights (list): The global GAN weights.
+        clients (dict): A dictionary where keys are client names and values are their data.
+        global_weights (list): The global model weights to be used for training the clients.
+        early_stopping (bool): Flag to indicate whether early stopping should be used.
+        lr_schedule (any): The learning rate schedule to be used during training.
+        global_gan_weights (list): The global GAN weights, if applicable.
         config (dict): Configuration dictionary containing parameters like batch size, epochs, etc.
+            - "workers" (int): Number of workers for parallel processing.
+            - "verbose" (bool): Flag for logging verbosity.
+            - "batch_size" (int): Batch size for client training.
+            - "threshold" (float): Threshold for model updates.
+            - "hidden_layer_multiplier" (int): Multiplier for hidden layer sizes.
+            - "k_value" (int): Parameter for federated algorithms.
+            - "r_value" (float): Regularization parameter for the model.
+            - "epochs" (int): Number of epochs for client training.
+            - "loss_function" (str): The loss function to be used during training.
+            - "metrics" (list): List of metrics to evaluate during training.
+            - "g_value" (Optional[float]): GAN-related parameter for the global model.
+            - "noise_dim" (Optional[int]): Dimension of noise input for GAN.
 
     Returns:
         list: The averaged model weights after training all clients.

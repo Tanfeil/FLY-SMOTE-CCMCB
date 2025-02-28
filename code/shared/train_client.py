@@ -1,3 +1,6 @@
+"""
+This Module contains functions and helperfunctions to train a FNN or a GAN of one client.
+"""
 import logging
 import math
 
@@ -20,11 +23,18 @@ def train_client(client_args: ClientConfiguration):
     """
     Trains the client model with the provided data and configuration.
 
+    This function initializes a local neural network model and trains it with the given client data.
+    Optionally, if global GAN weights are provided, a GAN model is used for synthetic data generation.
+    The model is trained using the k-SMOTE technique to handle class imbalance.
+
     Args:
         client_args (ClientConfiguration): Configuration object containing client data and settings.
 
     Returns:
-        tuple: The client name, trained model weights, and the number of samples processed.
+        tuple: A tuple containing:
+            - client_name (str): The name of the client.
+            - trained model weights (list): The model's weights after training.
+            - num_samples (int): The number of samples processed during training.
     """
     x_data, y_data = map(np.array, zip(*client_args.client_data))
 
@@ -40,7 +50,7 @@ def train_client(client_args: ClientConfiguration):
 
     # Handle class imbalance if necessary
     x_data, y_data = _handle_class_imbalance(x_data.tolist(), y_data.tolist(), local_gan, client_args.k_value,
-                                              client_args.r_value, client_args.g_value, client_args.threshold)
+                                             client_args.r_value, client_args.g_value, client_args.threshold)
 
     x_data = np.array(x_data)
     y_data = np.array(y_data)
@@ -61,11 +71,18 @@ def train_gan_client(client_args: GANClientConfiguration):
     """
     Trains the GAN client and generates synthetic data for class balancing.
 
+    This function initializes a GAN model, generates synthetic data using k-SMOTE,
+    and trains the GAN using the synthetic data. The trained GAN weights are returned.
+
     Args:
         client_args (GANClientConfiguration): Configuration object containing client data and settings.
 
     Returns:
-        tuple: The client name, trained generator weights, discriminator weights, and the number of synthetic samples.
+        tuple: A tuple containing:
+            - client_name (str): The name of the client.
+            - trained generator weights (list): The generator's weights after training.
+            - trained discriminator weights (list): The discriminator's weights after training.
+            - num_samples (int): The number of synthetic samples generated.
     """
     client_data, discriminator_weights = client_args.client_data
 
@@ -74,7 +91,7 @@ def train_gan_client(client_args: GANClientConfiguration):
 
     # Initialize the GAN model
     gan_model = _initialize_local_gan(x_data, client_args.global_gan_weights, discriminator_weights,
-                                       client_args.noise_dim)
+                                      client_args.noise_dim)
 
     logger.debug(f'{client_args.client_name}: Creating synthetic data for GAN')
 
@@ -140,6 +157,9 @@ def _handle_class_imbalance(x_data, y_data, gan, k_value, r_value, g_value, thre
     """
     Handles class imbalance by generating synthetic data if necessary.
 
+    This function checks for class imbalance and if the threshold is exceeded,
+    it generates synthetic samples using a GAN or k-SMOTE to balance the classes.
+
     Args:
         x_data (np.arrray): Input data.
         y_data (np.arrray): Labels.
@@ -157,7 +177,6 @@ def _handle_class_imbalance(x_data, y_data, gan, k_value, r_value, g_value, thre
     if imbalance_threshold <= threshold:
         if gan is not None:
             # Generate synthetic samples with GAN for the minority class
-            # TODO: could be interesting to replace local data by gan generated data?
             num_samples = min(math.floor(len_minor * g_value), len_major - len_minor)
             synthetic_samples = gan.generate_label_samples(minority_label, num_samples=num_samples)
 
@@ -202,6 +221,9 @@ def _generate_synthetic_data(x_data, y_data, class_labels, k, r):
 def _shuffle_data(x_data, y_data):
     """
     Shuffles data and labels randomly.
+
+    This function randomly shuffles the data and labels to ensure that the model
+    is not trained in an ordered sequence, which could lead to overfitting.
 
     Args:
         x_data (np.array): Input data.

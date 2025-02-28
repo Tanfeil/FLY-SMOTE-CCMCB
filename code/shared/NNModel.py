@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Sep 12 10:15:51 2022
-
-@author: Raneen_new
+Module: NNModel
+Author: Raneen_new
 Refactored by: Tanfeil on 11/12/2024
 
 Description:
 This module defines a simple Multi-Layer Perceptron (MLP) class for binary classification tasks.
 """
+
 import logging
+
 import keras
 import numpy as np
 import tensorflow as tf
@@ -19,7 +20,19 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 logger = logging.getLogger()
 keras_verbose = 0 if logger.level >= logging.INFO else 1
 
+
 class SimpleMLP:
+    """
+    A class that represents a simple Multi-Layer Perceptron (MLP) model for binary classification.
+
+    The class provides a static method to build a Keras Sequential model with three hidden layers
+    and a binary classification output.
+
+    Methods:
+        build(input_data, hidden_layer_multiplier):
+            Builds and returns a Keras Sequential MLP model for binary classification.
+    """
+
     @staticmethod
     def build(input_data, hidden_layer_multiplier):
         """
@@ -67,13 +80,16 @@ def evaluate_model(model, x_test, y_test, batch_size):
     Evaluates the model on the test set in batches and computes various performance metrics.
 
     Args:
-        model: The trained model to evaluate.
+        model (keras.Model): The trained model to evaluate.
         x_test (numpy.ndarray): Test feature data.
         y_test (numpy.ndarray): True labels for the test data.
         batch_size (int): Size of each batch during evaluation.
 
     Returns:
         dict: Aggregated evaluation metrics including accuracy, loss, confusion matrix, sensitivity, specificity, balanced accuracy, and G-mean.
+
+    Raises:
+        ValueError: If the dataset is empty.
     """
     # Initialize variables to aggregate results
     total_loss = 0.0
