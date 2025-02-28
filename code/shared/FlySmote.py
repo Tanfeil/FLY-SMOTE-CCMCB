@@ -2,81 +2,62 @@
 """
 Created on Mon Sep 12 09:52:47 2022
 
-@author: Raneen_new
+Author: Raneen_new
 Refactored by: Tanfeil on 11/12/2024.
 
-This Module to implements FLY-SMOTE for oversampling the minority class.
+This module implements FLY-SMOTE for oversampling the minority class. It includes functions for client data distribution,
+batching, weight scaling, k-nearest neighbors (k-NN), and generating synthetic samples using the k-SMOTE algorithm.
 """
 
 import random
 import warnings
-
 import numpy as np
 import tensorflow as tf
 
 
-def create_clients(data_list, label_list, num_clients, initial='client', attribute_index=None, distribute_by_attribute=False):
+def distribute_data_to_clients(data, labels, num_clients, client_prefix='client', attribute_index=None,
+                               distribute_by_attribute=False):
     """
-    Creates a dictionary of clients with data shards. Optionally distributes data based on a specified attribute index.
+    Distributes the data into client shards. Optionally distributes data based on a specified attribute index.
 
     Args:
-        data_list: A list of numpy arrays representing training data.
-        label_list: A list of binarized labels corresponding to each data point.
-        num_clients: The number of clients (workers) to split the data into.
-        initial: The prefix for the client names (e.g., 'client_1').
-        attribute_index: The column index in the data to use for distribution (optional).
+        data (list): List of numpy arrays representing training data.
+        labels (list): List of binarized labels corresponding to each data point.
+        num_clients (int): The number of clients (workers) to split the data into.
+        client_prefix (str): The prefix for the client names (e.g., 'client_1').
+        attribute_index (int, optional): The column index in the data to use for distribution.
+        distribute_by_attribute (bool): Whether to distribute data based on the attribute index.
 
     Returns:
-        A dictionary where keys are client names and values are data shards (data, label tuples).
+        dict: A dictionary where keys are client names and values are data shards (data, label tuples).
     """
-    client_names = ['{}_{}'.format(initial, i + 1) for i in range(num_clients)]
-    data_zipped = list(zip(data_list, label_list))
+    client_names = [f"{client_prefix}_{i + 1}" for i in range(num_clients)]
+    data_with_labels = list(zip(data, labels))  # Combine data and labels into tuples
 
-    # Split attributes to the clients
     if distribute_by_attribute and attribute_index is not None:
-
-        unique_values = set(data_list[:, attribute_index])
+        unique_values = set(data[:, attribute_index])
 
         if len(unique_values) != num_clients:
-            raise ValueError(f"Number of unique values ({len(unique_values)}) does not match the number of clients ({num_clients}).")
+            raise ValueError(
+                f"Number of unique values ({len(unique_values)}) does not match the number of clients ({num_clients}).")
 
         shards = []
-        for unique_value in unique_values:
-            indices_of_unique_value = np.where(data_list[:, attribute_index]==unique_value)[0]
-            shard = [data_zipped[i] for i in indices_of_unique_value]
-
+        for value in unique_values:
+            value_indices = np.where(data[:, attribute_index] == value)[0]
+            shard = [data_with_labels[i] for i in value_indices]
             shards.append(shard)
     else:
         if attribute_index is not None:
-            data_zipped = sorted(data_zipped, key=lambda x: x[0][attribute_index], reverse=True)
+            data_with_labels = sorted(data_with_labels, key=lambda x: x[0][attribute_index], reverse=True)
         else:
-            # Randomize the data if no attribute_index is provided
-            random.shuffle(data_zipped)
+            random.shuffle(data_with_labels)
 
-        # Shard the data and assign to clients
-        size = len(data_zipped) // num_clients
-        shards = [data_zipped[i:i + size] for i in range(0, size * num_clients, size)]
+        shard_size = len(data_with_labels) // num_clients
+        shards = [data_with_labels[i:i + shard_size] for i in range(0, shard_size * num_clients, shard_size)]
 
-    # Ensure the number of shards equals the number of clients
     assert len(shards) == len(client_names), "Mismatch between number of shards and clients."
 
     return {client_names[i]: shards[i] for i in range(len(client_names))}
-
-
-def batch_data_shard(data_shard, batch_size=4):
-    """
-    Converts a client's data shard into a TensorFlow dataset.
-
-    Args:
-        data_shard: A list of data and label tuples.
-        batch_size: The batch size for the dataset.
-
-    Returns:
-        A TensorFlow Dataset object.
-    """
-    data, labels = zip(*data_shard)  # Unzip the data and labels
-    dataset = tf.data.Dataset.from_tensor_slices((list(data), list(labels)))  # Create a dataset
-    return dataset.shuffle(len(labels)).batch(batch_size, drop_remainder=True)  # Shuffle and batch the dataset
 
 
 def batch_data(data, labels, batch_size=4):
@@ -84,39 +65,35 @@ def batch_data(data, labels, batch_size=4):
     Converts a client's data into a TensorFlow dataset.
 
     Args:
-        data: A list of data
-        labels: A list of binarized labels
-        batch_size: The batch size for the dataset.
+        data (list): A list of data.
+        labels (list): A list of binarized labels.
+        batch_size (int): The batch size for the dataset.
 
     Returns:
-        A TensorFlow Dataset object.
+        tf.data.Dataset: A TensorFlow Dataset object.
     """
     dataset = tf.data.Dataset.from_tensor_slices((data, labels))  # Create a dataset
     return dataset.shuffle(len(labels)).batch(batch_size, drop_remainder=True)  # Shuffle and batch the dataset
 
 
-def weight_scaling_factor(clients_train_data, client_name):
+def calculate_weight_scaling_factor(client_data_dict, client_name):
     """
     Calculates the weight scaling factor for a client based on their data size.
 
     Args:
-        clients_train_data: A dictionary of client training data.
-        client_name: The name of the client for which the scaling factor is calculated.
+        client_data_dict (dict): A dictionary of client training data.
+        client_name (str): The name of the client for which the scaling factor is calculated.
 
     Returns:
-        The weight scaling factor for the given client.
+        float: The weight scaling factor for the given client.
     """
-    client_names = list(clients_train_data.keys())  # Get all client names
-    # Get the batch size of the first data point from the selected client
-    batch_size = list(clients_train_data[client_name])[0][0].shape[0]
+    client_names = list(client_data_dict.keys())
+    batch_size = list(client_data_dict[client_name])[0][0].shape[0]  # Get batch size from the first data point
 
-    # Calculate the total training data points across all clients
-    global_count = sum([tf.data.experimental.cardinality(clients_train_data[client_name]).numpy() for client_name in
-                        client_names]) * batch_size
-
-    # Get the total number of data points held by the current client
-    local_count = tf.data.experimental.cardinality(clients_train_data[client_name]).numpy() * batch_size
-    return local_count / global_count  # Return the weight scaling factor
+    total_data_points = sum([tf.data.experimental.cardinality(client_data_dict[client]).numpy()
+                             for client in client_names]) * batch_size
+    client_data_points = tf.data.experimental.cardinality(client_data_dict[client_name]).numpy() * batch_size
+    return client_data_points / total_data_points  # Return the weight scaling factor
 
 
 def scale_model_weights(weights, scalar):
@@ -124,186 +101,169 @@ def scale_model_weights(weights, scalar):
     Scales the model weights by a given scalar factor.
 
     Args:
-        weights: The model weights to be scaled.
-        scalar: The scaling factor.
+        weights (list): The model weights to be scaled.
+        scalar (float): The scaling factor.
 
     Returns:
-        A list of scaled weights.
+        list: A list of scaled weights.
     """
-    scaled_weights = []  # List to hold the scaled weights
-    for weight in weights:
-        scaled_weights.append(scalar * weight)  # Scale each weight by the scalar
-    return scaled_weights
+    return [scalar * weight for weight in weights]  # Scale each weight by the scalar
 
 
-def sum_scaled_weights(scaled_weight_list):
+def sum_scaled_weights(scaled_weights_list):
     """
     Sums the scaled weights across all clients.
 
     Args:
-        scaled_weight_list: A list of scaled weights from different clients.
+        scaled_weights_list (list): A list of scaled weights from different clients.
 
     Returns:
-        The summed weights.
+        list: The summed weights.
     """
-    avg_grad = []  # List to hold the summed gradients
-    for grad_list_tuple in zip(*scaled_weight_list):  # Zip the weight lists for each layer
-        layer_mean = tf.math.reduce_sum(grad_list_tuple, axis=0)  # Sum the gradients
-        avg_grad.append(layer_mean)  # Append the result to the list
-    return avg_grad
+    return [tf.math.reduce_sum(layer, axis=0) for layer in zip(*scaled_weights_list)]  # Sum the weights
+
 
 def scale_and_sum_weights(weights, scalars):
-    scaled_weights = map(lambda weight, scalar: scale_model_weights(weight, scalar), weights, scalars)
-    return [sum(weights) for weights in zip(*scaled_weights)]
-
-def k_nearest_neighbors(data, predict, k):
     """
-    Implements the k-nearest neighbors algorithm.
+    Scales and sums the model weights from multiple clients.
 
     Args:
-        data: The dataset to compare against.
-        predict: The data point to predict.
-        k: The number of nearest neighbors to consider.
+        weights (list): The model weights from different clients.
+        scalars (list): The scaling factors for each client.
 
     Returns:
-        A list of indices of the k nearest neighbors.
+        list: A list of scaled and summed weights.
+    """
+    scaled_weights = map(lambda weight, scalar: scale_model_weights(weight, scalar), weights, scalars)
+    return [sum(weight_list) for weight_list in zip(*scaled_weights)]
+
+
+def k_nearest_neighbors(data, query_point, k):
+    """
+    Implements the k-nearest neighbors algorithm.
+    query_point itself can be a neighbor
+
+    Args:
+        data (np.array): The dataset to compare against.
+        query_point (array-like): The data point to predict.
+        k (int): The number of nearest neighbors to consider.
+
+    Returns:
+        list: A list of indices of the k nearest neighbors.
     """
     if len(data) < k:
         warnings.warn(f'K ({k}) is greater than total data points ({len(data)})!')
 
-    distances = []  # List to hold distances from the predicted point
-    count = 0  # Counter for indexing the data points
-    for sample in data:
-        euclidean_distance = np.linalg.norm(np.array(sample) - np.array(predict))  # Calculate Euclidean distance
-        distances.append([euclidean_distance, count])  # Store distance with index
-        count += 1
+    distances = [(np.linalg.norm(np.array(sample) - np.array(query_point)), idx) for idx, sample in enumerate(data)]
 
     # Sort the distances and return the indices of the k nearest neighbors
-    votes = [i[1] for i in sorted(distances)[:k]]
-    return votes
+    return [idx for _, idx in sorted(distances)[:k]]
 
 
-def kSMOTE(d_major, d_minor, k, r):
+def kSMOTE(majority_data, minority_data, k, r):
     """
     Generates synthetic data using the k-SMOTE algorithm.
 
     Args:
-        d_major: The majority class data.
-        d_minor: The minority class data.
-        k: The number of nearest neighbors.
-        r: The ratio of synthetic samples to generate.
+        majority_data (list): The majority class data.
+        minority_data (list): The minority class data.
+        k (int): The number of nearest neighbors.
+        r (float): The ratio of synthetic samples to generate.
 
     Returns:
-        A list of synthetic data points.
+        list: A list of synthetic data points.
     """
-    S = []  # List to store synthetic data points
-    Ns = int(r * (len(d_major) - len(d_minor)))  # Calculate the number of synthetic samples
-    Nks = int(Ns / k)  # Determine how many synthetic samples per neighbor
+    majority_data = np.array(majority_data)
+    minority_data = np.array(minority_data)
 
-    dmin_rand = random.sample(d_minor, k)  # Randomly sample from the minority class
+    synthetic_samples = []
+    num_synthetic_samples = int(r * (len(majority_data) - len(minority_data)))  # Calculate the number of synthetic samples
+    samples_per_neighbor = num_synthetic_samples // k
 
-    # Perform interpolation to create synthetic data
-    for xb in dmin_rand:
-        N = k_nearest_neighbors(d_minor, xb, k)  # Get k nearest neighbors
-        Sxb = []  # List to store synthetic samples for a given point
-        for s in range(Nks):
-            j = N[0]
-            j = random.randint(0, len(N))  # Random index from neighbors
-            x_new = ((d_minor[j] - xb) * random.sample(range(0, 1), 1))  # Interpolate new point
-            Sxb.append(xb + x_new)  # Add the new point to the list
-        S.append(Sxb)  # Append the synthetic samples
-    return S
+    sampled_minority = random.sample(minority_data.tolist(), k)  # Randomly sample from the minority class
 
-def interpolate(d_class, k, r):
+    for sample in sampled_minority:
+        # sample itself, can be a neighbor so the original point is passed through
+        neighbors = k_nearest_neighbors(minority_data, sample, k)
+        selected_neighbors = random.choices(neighbors, k=samples_per_neighbor)
+        for neighbor_idx in selected_neighbors:
+            interpolated_sample = sample + (minority_data[neighbor_idx] - sample) * random.random()
+            synthetic_samples.append(interpolated_sample.tolist())
+
+    return synthetic_samples
+
+
+def interpolate(data, k, r):
     """
     Generates synthetic data using a modification of k-SMOTE algorithm.
 
     Args:
-        d_class: Data class to interpolate from
-        k: The number of nearest neighbors.
-        r: The ratio of synthetic samples to generate.
+        data (list): Data class to interpolate from.
+        k (int): The number of nearest neighbors.
+        r (float): The ratio of synthetic samples to generate.
 
     Returns:
-        A list of synthetic data points.
+        list: A list of synthetic data points.
     """
-    S = []  # List to store synthetic data points
-    Ns = int(r * len(d_class))  # Calculate the number of synthetic samples
-    Nks = int(Ns / k)  # Determine how many synthetic samples per neighbor
+    data = np.array(data)
 
-    dmin_rand = random.sample(d_class, k)  # Randomly sample from the minority class
+    synthetic_samples = []  # List to store synthetic data points
+    num_synthetic_samples = int(r * len(data))  # Calculate the number of synthetic samples
+    samples_per_neighbor = num_synthetic_samples // k
 
-    # Perform interpolation to create synthetic data
-    for xb in dmin_rand:
-        N = k_nearest_neighbors(d_class, xb, k)  # Get k nearest neighbors
-        Sxb = []  # List to store synthetic samples for a given point
-        for s in range(Nks):
-            j = N[0]
-            j = random.randint(0, len(N))  # Random index from neighbors
-            x_new = ((d_class[j] - xb) * random.sample(range(0, 1), 1))  # Interpolate new point
-            Sxb.append(xb + x_new)  # Add the new point to the list
-        S.append(Sxb)  # Append the synthetic samples
-    return S
+    sampled_minority = random.sample(data.tolist(), k)  # Randomly sample from the minority class
+
+    for sample in sampled_minority:
+        # sample itself, can be a neighbor so the original point is passed through
+        neighbors = k_nearest_neighbors(data, sample, k)
+        selected_neighbors = random.choices(neighbors, k=samples_per_neighbor)
+        for neighbor_idx in selected_neighbors:
+            interpolated_sample = sample + (data[neighbor_idx] - sample) * random.random()
+            synthetic_samples.append(interpolated_sample.tolist())
+
+    return synthetic_samples
 
 
-def splitYtrain(X_train, Y_train, minority_label):
+def split_data_by_class(data, labels, minority_class_label):
     """
     Splits the training data into majority and minority classes.
 
     Args:
-        X_train: The feature data.
-        Y_train: The labels.
-        minority_label: The label of the minority class.
+        data (list): The feature data.
+        labels (list): The labels.
+        minority_class_label (int): The label of the minority class.
 
     Returns:
-        Two lists: majority class data and minority class data.
+        tuple: Two lists - majority class data and minority class data.
     """
-    d_major_x = []  # List for majority class features
-    d_minor_x = []  # List for minority class features
-    for i in range(len(Y_train)):
-        if Y_train[i] == minority_label:
-            d_minor_x.append(X_train[i])  # Add to minority class if label matches
-        else:
-            d_major_x.append(X_train[i])  # Add to majority class
-
-    return d_major_x, d_minor_x  # Return the split datasets
+    majority_class_data = [data[i] for i in range(len(labels)) if labels[i] != minority_class_label]
+    minority_class_data = [data[i] for i in range(len(labels)) if labels[i] == minority_class_label]
+    return majority_class_data, minority_class_data  # Return the split datasets
 
 
-def extend_with_k_smote(client_training_x, client_training_y, minority_label, k, r):
+def extend_with_k_smote(client_data_x, client_data_y, minority_label, k, r):
     """
     Creates synthetic data for the given client using the k-SMOTE algorithm.
 
     Args:
-        client_training_x: The feature data for the client.
-        client_training_y: The labels for the client.
-        minority_label: The label of the minority class.
-        k: The number of nearest neighbors to consider.
-        r: The ratio of synthetic samples to generate.
+        client_data_x (list): The feature data for the client.
+        client_data_y (list): The labels for the client.
+        minority_label (int): The label of the minority class.
+        k (int): The number of nearest neighbors to consider.
+        r (float): The ratio of synthetic samples to generate.
 
     Returns:
-        A tuple of synthetic feature data and synthetic labels.
+        tuple: A tuple of synthetic feature data and synthetic labels.
     """
-    d_major_x, d_minor_x = splitYtrain(client_training_x, client_training_y, minority_label)  # Split data
-    if len(d_minor_x) == 0:
-        return np.array(client_training_x), np.array(client_training_y)
-    x_syn = kSMOTE(d_major_x, d_minor_x, k, r)  # Generate synthetic data using k-SMOTE
-    X_train_new = []  # List for new synthetic features
-    Y_train_new = []  # List for new synthetic labels
+    majority_data, minority_data = split_data_by_class(client_data_x, client_data_y, minority_label)
 
-    # Get the label of the minority class for new synthetic data
-    # new_label = next(k for k in client_training_y if k == minority_label)
-    # TODO: new_label = minority_label ? from old code
-    new_label = minority_label
+    if not minority_data:
+        return np.array(client_data_x), np.array(client_data_y)
 
-    # Add the synthetic data and labels
-    for j in x_syn:
-        for s in j:
-            X_train_new.append(s)
-            Y_train_new.append(new_label)
+    synthetic_data = kSMOTE(majority_data, minority_data, k, r)
+    new_labels = [minority_label] * len(synthetic_data)
 
-    # Add the original data
-    for k in client_training_x:
-        X_train_new.append(k)
-    for k in client_training_y:
-        Y_train_new.append(k)
+    client_data_x.extend(synthetic_data)
+    client_data_y.extend(new_labels)
 
-    return np.array(X_train_new), np.array(Y_train_new)  # Return new synthetic data and labels
+    return np.array(client_data_x), np.array(client_data_y)
